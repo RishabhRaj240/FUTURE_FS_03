@@ -2,7 +2,7 @@ import { ProjectCard } from "./ProjectCard";
 import { Database } from "@/integrations/supabase/types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
-  profiles: Database["public"]["Tables"]["profiles"]["Row"];
+  profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
   isLiked?: boolean;
 };
 

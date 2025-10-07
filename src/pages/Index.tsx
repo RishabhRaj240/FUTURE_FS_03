@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
-  profiles: Database["public"]["Tables"]["profiles"]["Row"];
+  profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
   isLiked?: boolean;
 };
 
@@ -31,7 +31,7 @@ const Index = () => {
       .from("projects")
       .select(`
         *,
-        profiles!projects_user_id_fkey (*)
+        profiles(*)
       `)
       .order("created_at", { ascending: false });
 
@@ -59,14 +59,14 @@ const Index = () => {
 
       const likedProjectIds = new Set(likesData?.map(like => like.project_id) || []);
 
-      const projectsWithLikes = projectsData?.map(project => ({
+      const projectsWithLikes = (projectsData?.map(project => ({
         ...project,
         isLiked: likedProjectIds.has(project.id),
-      })) as Project[];
+      })) || []) as Project[];
 
-      setProjects(projectsWithLikes || []);
+      setProjects(projectsWithLikes);
     } else {
-      setProjects(projectsData as Project[] || []);
+      setProjects((projectsData || []) as Project[]);
     }
 
     setLoading(false);
