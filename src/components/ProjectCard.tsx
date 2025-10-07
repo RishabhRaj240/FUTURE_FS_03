@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Heart, Eye } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { ProfileHoverCard } from "@/components/ProfileHoverCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Database } from "@/integrations/supabase/types";
@@ -100,10 +101,12 @@ export const ProjectCard = ({ project, onLikeToggle }: ProjectCardProps) => {
 
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Avatar className="h-6 w-6 flex-shrink-0">
-              <AvatarImage src={project.profiles?.avatar_url || undefined} />
-              <AvatarFallback className="text-xs">{project.profiles?.username?.[0]?.toUpperCase()}</AvatarFallback>
-            </Avatar>
+            <ProfileHoverCard userId={project.user_id}>
+              <Avatar className="h-6 w-6 flex-shrink-0 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
+                <AvatarImage src={project.profiles?.avatar_url || undefined} />
+                <AvatarFallback className="text-xs">{project.profiles?.username?.[0]?.toUpperCase()}</AvatarFallback>
+              </Avatar>
+            </ProfileHoverCard>
             <span className="text-xs font-medium text-foreground truncate">
               {project.profiles?.username}
             </span>

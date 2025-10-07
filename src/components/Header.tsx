@@ -3,26 +3,51 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Search, Bell, Upload } from "lucide-react";
+import { ProfileHoverCard } from "@/components/ProfileHoverCard";
+import { Search, Bell, Upload, Filter, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export const Header = () => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        loadProfile(session.user.id);
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadProfile = async (userId: string) => {
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    setProfile(profileData);
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,66 +57,134 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center justify-between px-4">
-        <div className="flex items-center gap-8">
-          <Link to="/" className="text-2xl font-bold text-foreground hover:text-primary transition-colors">
-            CreativeHub
-          </Link>
-          
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              Explore
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+      {/* Top bar */}
+      <div className="container px-4">
+        <div className="flex h-14 items-center justify-between">
+          <div className="flex items-center gap-8">
+            <Link
+              to="/"
+              className="text-[22px] font-extrabold tracking-tight text-foreground hover:text-primary transition-colors"
+            >
+              CreativeHub
             </Link>
-            <Link to="/hire" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              Hire Creatives
-            </Link>
-          </nav>
+            <nav className="hidden lg:flex items-center gap-6">
+              <Link to="/" className="text-sm font-semibold text-foreground">
+                Explore
+              </Link>
+              <Link
+                to="/jobs"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Find Jobs
+              </Link>
+              <Link
+                to="/freelance"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                My Freelance Work
+              </Link>
+              <button className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                Career Resources <ChevronDown className="h-4 w-4" />
+              </button>
+              <button className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                Hire Freelancers <ChevronDown className="h-4 w-4" />
+              </button>
+            </nav>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="default"
+              className="hidden md:inline-flex bg-blue-600 hover:bg-blue-700"
+            >
+              Start Free Trial
+            </Button>
+            {user ? (
+              <>
+                <Button
+                  onClick={() => navigate("/upload")}
+                  className="hidden md:flex gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Share Your Work
+                </Button>
+                <Button variant="ghost" size="icon">
+                  <Bell className="h-5 w-5" />
+                </Button>
+                <ProfileHoverCard userId={user.id}>
+                  <Link
+                    to={profile?.username ? `/${profile.username}` : "/profile"}
+                  >
+                    <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 ring-primary transition-all">
+                      <AvatarImage
+                        src={
+                          profile?.avatar_url || user.user_metadata?.avatar_url
+                        }
+                      />
+                      <AvatarFallback>
+                        {profile?.full_name?.[0] ||
+                          profile?.username?.[0] ||
+                          user.email?.[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Link>
+                </ProfileHoverCard>
+              </>
+            ) : (
+              <>
+                <Button variant="ghost" onClick={() => navigate("/auth")}>
+                  Log In
+                </Button>
+                <Button onClick={() => navigate("/auth?mode=signup")}>
+                  Sign Up
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
-        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search CreativeHub..."
-              className="pl-10 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        {/* Search + filter row */}
+        <div className="flex items-center gap-3 pb-3">
+          <Button variant="outline" className="gap-2">
+            <Filter className="h-4 w-4" />
+            Filter
+          </Button>
+          <form onSubmit={handleSearch} className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search Behance..."
+                className="pl-10 h-10 rounded-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </form>
+          <div className="hidden md:flex items-center gap-2 rounded-full border px-1 py-1 bg-white">
+            <Button variant="secondary" className="rounded-full px-4 h-8">
+              Projects
+            </Button>
+            <Button
+              variant="ghost"
+              className="rounded-full px-4 h-8 text-muted-foreground"
+            >
+              People
+            </Button>
+            <Button
+              variant="ghost"
+              className="rounded-full px-4 h-8 text-muted-foreground"
+            >
+              Assets
+            </Button>
+            <Button
+              variant="ghost"
+              className="rounded-full px-4 h-8 text-muted-foreground"
+            >
+              Images
+            </Button>
           </div>
-        </form>
-
-        <div className="flex items-center gap-4">
-          {user ? (
-            <>
-              <Button 
-                onClick={() => navigate("/upload")}
-                className="hidden md:flex gap-2"
-              >
-                <Upload className="h-4 w-4" />
-                Share Your Work
-              </Button>
-              <Button variant="ghost" size="icon">
-                <Bell className="h-5 w-5" />
-              </Button>
-              <Link to="/profile">
-                <Avatar className="h-8 w-8 cursor-pointer hover:ring-2 ring-primary transition-all">
-                  <AvatarImage src={user.user_metadata?.avatar_url} />
-                  <AvatarFallback>{user.email?.[0].toUpperCase()}</AvatarFallback>
-                </Avatar>
-              </Link>
-            </>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={() => navigate("/auth")}>
-                Log In
-              </Button>
-              <Button onClick={() => navigate("/auth?mode=signup")}>
-                Sign Up
-              </Button>
-            </>
-          )}
         </div>
       </div>
     </header>
