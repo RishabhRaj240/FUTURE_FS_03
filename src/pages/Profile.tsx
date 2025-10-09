@@ -21,6 +21,7 @@ import {
   Share2,
   MoreHorizontal,
   Camera,
+  Upload,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -261,7 +262,7 @@ const Profile = () => {
       {/* Banner Area */}
       <div className="relative">
         {isOwnProfile ? (
-          <div className="h-64 relative group">
+          <div className="h-48 sm:h-56 md:h-64 relative group">
             {profile.banner_url ? (
               <img
                 src={profile.banner_url}
@@ -495,10 +496,10 @@ const Profile = () => {
         )}
 
         {/* Profile Picture - Overlapping banner */}
-        <div className="relative -mt-16 ml-8">
+        <div className="relative -mt-12 sm:-mt-16 ml-4 sm:ml-8">
           {isOwnProfile ? (
             <div className="relative group">
-              <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 border-4 border-white shadow-lg">
                 <AvatarImage
                   src={profile.avatar_url || ""}
                   onError={() =>
@@ -514,7 +515,7 @@ const Profile = () => {
                     )
                   }
                 />
-                <AvatarFallback className="text-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+                <AvatarFallback className="text-lg sm:text-xl md:text-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white">
                   {profile.full_name?.[0] || profile.username[0].toUpperCase()}
                 </AvatarFallback>
               </Avatar>
@@ -590,7 +591,7 @@ const Profile = () => {
               </div>
             </div>
           ) : (
-            <Avatar className="h-32 w-32 border-4 border-white shadow-lg">
+            <Avatar className="h-20 w-20 sm:h-24 sm:w-24 md:h-32 md:w-32 border-4 border-white shadow-lg">
               <AvatarImage
                 src={profile.avatar_url || ""}
                 onError={() =>
@@ -606,7 +607,7 @@ const Profile = () => {
                   )
                 }
               />
-              <AvatarFallback className="text-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white">
+              <AvatarFallback className="text-lg sm:text-xl md:text-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white">
                 {profile.full_name?.[0] || profile.username[0].toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -615,13 +616,13 @@ const Profile = () => {
       </div>
 
       <div className="container mx-auto px-4 pb-8 bg-white">
-        <div className="flex gap-8">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
           {/* Left Sidebar */}
-          <div className="w-80 mt-8">
+          <div className="w-full lg:w-80 mt-4 lg:mt-8">
             <div className="space-y-6">
               {/* Profile Info */}
               <div className="space-y-4">
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                   {profile.full_name || profile.username}
                 </h1>
 
@@ -683,22 +684,33 @@ const Profile = () => {
               {/* Action Buttons - Only show for own profile */}
               {isOwnProfile && (
                 <div className="space-y-3">
+                  {/* Mobile Share Your Work Button - Prominent on mobile */}
                   <Button 
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm sm:text-base font-semibold shadow-lg lg:hidden"
+                    onClick={() => navigate("/upload")}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Share Your Work
+                  </Button>
+                  
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                     onClick={() => navigate("/settings")}
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile Info
+                    <span className="hidden sm:inline">Edit Profile Info</span>
+                    <span className="sm:hidden">Edit Profile</span>
                   </Button>
                   <Button
                     variant="outline"
-                    className="w-full border-blue-600 text-blue-600 hover:bg-blue-50"
+                    className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 text-sm sm:text-base"
                   >
                     <Settings className="h-4 w-4 mr-2" />
-                    Customize Profile
+                    <span className="hidden sm:inline">Customize Profile</span>
+                    <span className="sm:hidden">Customize</span>
                     <Badge
                       variant="secondary"
-                      className="ml-2 bg-blue-100 text-blue-600"
+                      className="ml-2 bg-blue-100 text-blue-600 text-xs"
                     >
                       PRO
                     </Badge>
@@ -710,7 +722,7 @@ const Profile = () => {
               {isOwnProfile && (
                 <Card className="border border-gray-200">
                   <CardHeader className="pb-3">
-                    <h3 className="font-semibold text-gray-900">
+                    <h3 className="font-semibold text-gray-900 text-sm sm:text-base">
                       Hire{" "}
                       {profile.full_name?.split(" ")[0] || profile.username}
                     </h3>
@@ -720,16 +732,16 @@ const Profile = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">
+                          <span className="text-xs sm:text-sm text-gray-700">
                             Freelance/Project
                           </span>
                         </div>
                         <CheckCircle className="h-4 w-4 text-green-500" />
                       </div>
-                      <p className="text-sm text-gray-600">Availability: Now</p>
+                      <p className="text-xs sm:text-sm text-gray-600">Availability: Now</p>
                       <Button
                         size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
                       >
                         Edit Availability
                       </Button>
@@ -741,49 +753,61 @@ const Profile = () => {
           </div>
 
           {/* Main Content */}
-          <div className="flex-1 mt-8">
+          <div className="flex-1 mt-4 lg:mt-8">
             <Tabs
               value={activeTab}
               onValueChange={setActiveTab}
               className="w-full"
             >
-              <TabsList className="grid w-full grid-cols-7 bg-white border border-gray-200">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 bg-white border border-gray-200 overflow-x-auto">
                 <TabsTrigger
                   value="work"
-                  className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 text-xs sm:text-sm"
                 >
                   Work
                 </TabsTrigger>
-                <TabsTrigger value="services">Services</TabsTrigger>
-                <TabsTrigger value="stock">Adobe Stock</TabsTrigger>
-                <TabsTrigger value="moodboards">Moodboards</TabsTrigger>
-                <TabsTrigger value="appreciations">Appreciations</TabsTrigger>
-                <TabsTrigger value="stats">Your Stats</TabsTrigger>
-                <TabsTrigger value="drafts">Drafts</TabsTrigger>
+                <TabsTrigger value="services" className="text-xs sm:text-sm">Services</TabsTrigger>
+                <TabsTrigger value="stock" className="text-xs sm:text-sm">Stock</TabsTrigger>
+                <TabsTrigger value="moodboards" className="text-xs sm:text-sm">Moodboards</TabsTrigger>
+                <TabsTrigger value="appreciations" className="text-xs sm:text-sm">Appreciations</TabsTrigger>
+                <TabsTrigger value="stats" className="text-xs sm:text-sm">Stats</TabsTrigger>
+                <TabsTrigger value="drafts" className="text-xs sm:text-sm">Drafts</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="work" className="mt-6">
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-gray-900">
+              <TabsContent value="work" className="mt-4 sm:mt-6">
+                <div className="space-y-4 sm:space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">
                       Projects
                     </h2>
                     {isOwnProfile && (
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Section
-                        <Badge
-                          variant="secondary"
-                          className="ml-2 bg-blue-100 text-blue-600"
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+                        {/* Mobile Share Your Work Button */}
+                        <Button 
+                          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-semibold shadow-lg sm:hidden"
+                          onClick={() => navigate("/upload")}
                         >
-                          PRO
-                        </Badge>
-                      </Button>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Share Your Work
+                        </Button>
+                        
+                        {/* Desktop Add Section Button */}
+                        <Button className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base hidden sm:flex">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Section
+                          <Badge
+                            variant="secondary"
+                            className="ml-2 bg-blue-100 text-blue-600 text-xs"
+                          >
+                            PRO
+                          </Badge>
+                        </Button>
+                      </div>
                     )}
                   </div>
 
                   {projects.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                       {projects.map((project) => (
                         <Card
                           key={project.id}
@@ -809,40 +833,40 @@ const Profile = () => {
                               />
                             )}
                           </div>
-                          <CardContent className="p-4">
-                            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">
+                          <CardContent className="p-3 sm:p-4">
+                            <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1 text-sm sm:text-base">
                               {project.title}
                             </h3>
                             {project.description && (
-                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                              <p className="text-xs sm:text-sm text-gray-600 mb-3 line-clamp-2">
                                 {project.description}
                               </p>
                             )}
-                            <div className="flex items-center justify-between text-sm text-gray-500">
-                              <div className="flex items-center gap-4">
+                            <div className="flex items-center justify-between text-xs sm:text-sm text-gray-500">
+                              <div className="flex items-center gap-2 sm:gap-4">
                                 <div className="flex items-center gap-1">
-                                  <Heart className="h-4 w-4" />
+                                  <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
                                   <span>{project.likes_count}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Eye className="h-4 w-4" />
+                                  <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
                                   <span>{project.views_count}</span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 sm:gap-2">
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0"
+                                  className="h-6 w-6 sm:h-8 sm:w-8 p-0"
                                 >
-                                  <Share2 className="h-4 w-4" />
+                                  <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="ghost"
-                                  className="h-8 w-8 p-0"
+                                  className="h-6 w-6 sm:h-8 sm:w-8 p-0"
                                 >
-                                  <MoreHorizontal className="h-4 w-4" />
+                                  <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
                               </div>
                             </div>
@@ -852,20 +876,20 @@ const Profile = () => {
                     </div>
                   ) : (
                     <Card className="border-dashed border-2 border-gray-300">
-                      <CardContent className="flex flex-col items-center justify-center py-12">
-                        <div className="bg-blue-100 rounded-full p-4 mb-4">
-                          <Plus className="h-8 w-8 text-blue-600" />
+                      <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+                        <div className="bg-blue-100 rounded-full p-3 sm:p-4 mb-3 sm:mb-4">
+                          <Plus className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-2">
                           Create a Project
                         </h3>
-                        <p className="text-sm text-gray-600 text-center mb-4 max-w-sm">
+                        <p className="text-xs sm:text-sm text-gray-600 text-center mb-4 max-w-sm px-4">
                           Get feedback, views, and appreciations. Public
                           projects can be featured by our curators.
                         </p>
                         {isOwnProfile && (
                           <Button
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                             onClick={() => navigate("/upload")}
                           >
                             Create a Project
@@ -924,6 +948,19 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Floating Action Button - Only show for own profile on mobile */}
+      {isOwnProfile && (
+        <div className="fixed bottom-6 right-6 z-50 lg:hidden">
+          <Button
+            size="lg"
+            className="h-14 w-14 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300"
+            onClick={() => navigate("/upload")}
+          >
+            <Upload className="h-6 w-6" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
