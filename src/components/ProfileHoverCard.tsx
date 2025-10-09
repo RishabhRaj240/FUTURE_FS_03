@@ -205,7 +205,38 @@ export const ProfileHoverCard = ({
             {/* Account Status Section */}
             <div className="p-4 border-b border-gray-100">
               <div className="text-xs text-gray-500 mb-3">
-                Viewing as: Creative
+                {(() => {
+                  const savedSettings = localStorage.getItem('userAvailabilitySettings');
+                  let statusText = "Available for Work";
+                  let statusColor = "text-green-600";
+                  
+                  if (savedSettings) {
+                    try {
+                      const parsedSettings = JSON.parse(savedSettings);
+                      const isAvailable = parsedSettings.isAvailable;
+                      const status = parsedSettings.availabilityStatus || "available";
+                      
+                      if (!isAvailable) {
+                        statusText = "Not Available";
+                        statusColor = "text-gray-500";
+                      } else if (status === "busy") {
+                        statusText = "Busy";
+                        statusColor = "text-yellow-600";
+                      } else if (status === "away") {
+                        statusText = "Away";
+                        statusColor = "text-orange-600";
+                      }
+                    } catch (error) {
+                      console.error("Error parsing availability settings:", error);
+                    }
+                  }
+                  
+                  return (
+                    <div className={`${statusColor} font-medium`}>
+                      Status: {statusText}
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-3">
@@ -224,7 +255,7 @@ export const ProfileHoverCard = ({
 
                 <div 
                   className="cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
-                  onClick={() => handleMenuClick("/profile?tab=availability")}
+                  onClick={() => handleMenuClick("/edit-availability")}
                 >
                   <div className="text-sm font-medium text-gray-900 mb-1">
                     Edit My Availability

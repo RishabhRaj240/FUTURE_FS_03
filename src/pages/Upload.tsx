@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
-import { Upload as UploadIcon, X } from "lucide-react";
+import { Upload as UploadIcon, X, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
 type Category = Database["public"]["Tables"]["categories"]["Row"];
@@ -22,16 +22,17 @@ export default function Upload() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isVideoSelected, setIsVideoSelected] = useState<boolean>(false);
+  const [uploadType, setUploadType] = useState<'image' | 'video'>('image');
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Only allow video uploads for specific categories: Edited Video and Motion
+  // Allow video uploads for all categories
   const isVideoCategory = (() => {
     const selected = categories.find((c) => c.id === categoryId);
     if (!selected) return false;
     const name = (selected.name || "").toLowerCase();
-    return name === "edited video" || name === "motion";
+    return name === "edited video" || name === "motion" || name === "animation" || name === "video production";
   })();
 
   useEffect(() => {
@@ -63,8 +64,41 @@ export default function Upload() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type based on upload type
+      const isVideo = file.type.startsWith("video/");
+      const isImage = file.type.startsWith("image/");
+      
+      if (uploadType === 'video' && !isVideo) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a video file (MP4, WebM, MOV, etc.)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (uploadType === 'image' && !isImage) {
+        toast({
+          title: "Invalid File Type", 
+          description: "Please select an image file (PNG, JPG, WEBP, etc.)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size
+      const maxSize = uploadType === 'video' ? 200 * 1024 * 1024 : 10 * 1024 * 1024; // 200MB for video, 10MB for image
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: `File size must be less than ${uploadType === 'video' ? '200MB' : '10MB'}`,
+          variant: "destructive",
+        });
+        return;
+      }
+
       setImageFile(file);
-      setIsVideoSelected(file.type.startsWith("video/"));
+      setIsVideoSelected(isVideo);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -79,13 +113,23 @@ export default function Upload() {
     setIsVideoSelected(false);
   };
 
+  const handleUploadTypeChange = (type: 'image' | 'video') => {
+    setUploadType(type);
+    // Clear current file when switching types
+    if (imageFile) {
+      setImageFile(null);
+      setImagePreview(null);
+      setIsVideoSelected(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!imageFile) {
       toast({
         title: "Error",
-        description: isVideoCategory ? "Please select a video" : "Please select an image",
+        description: uploadType === 'video' ? "Please select a video" : "Please select an image",
         variant: "destructive",
       });
       return;
@@ -153,8 +197,39 @@ export default function Upload() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Upload Type Selector */}
               <div className="space-y-2">
-                <Label>Project {isVideoCategory ? "Video" : "Image"} *</Label>
+                <Label>Upload Type *</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={uploadType === 'image' ? 'default' : 'outline'}
+                    onClick={() => handleUploadTypeChange('image')}
+                    className="flex-1"
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    Image
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={uploadType === 'video' ? 'default' : 'outline'}
+                    onClick={() => handleUploadTypeChange('video')}
+                    className="flex-1"
+                  >
+                    <VideoIcon className="h-4 w-4 mr-2" />
+                    Video
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {uploadType === 'video' 
+                    ? "Videos will auto-play in the project grid and can be up to 200MB"
+                    : "Images are optimized for fast loading and can be up to 10MB"
+                  }
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Project {uploadType === 'video' ? "Video" : "Image"} *</Label>
                 {imagePreview ? (
                   <div className="relative">
                     {isVideoSelected ? (
@@ -180,13 +255,13 @@ export default function Upload() {
                         <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {isVideoCategory ? "MP4, WebM, MOV (MAX. 200MB)" : "PNG, JPG, or WEBP (MAX. 10MB)"}
+                        {uploadType === 'video' ? "MP4, WebM, MOV (MAX. 200MB)" : "PNG, JPG, or WEBP (MAX. 10MB)"}
                       </p>
                     </div>
                     <Input
                       type="file"
                       className="hidden"
-                      accept={isVideoCategory ? "video/*" : "image/*"}
+                      accept={uploadType === 'video' ? "video/*" : "image/*"}
                       onChange={handleImageChange}
                     />
                   </label>

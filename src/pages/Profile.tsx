@@ -626,10 +626,46 @@ const Profile = () => {
                 </h1>
 
                 <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm font-medium text-green-600">
-                    Available Now
-                  </span>
+                  {(() => {
+                    const savedSettings = localStorage.getItem('userAvailabilitySettings');
+                    let isAvailable = true;
+                    let statusText = "Available Now";
+                    let statusColor = "text-green-600";
+                    let dotColor = "bg-green-500";
+                    
+                    if (savedSettings) {
+                      try {
+                        const parsedSettings = JSON.parse(savedSettings);
+                        isAvailable = parsedSettings.isAvailable;
+                        const status = parsedSettings.availabilityStatus || "available";
+                        
+                        if (!isAvailable) {
+                          statusText = "Not Available";
+                          statusColor = "text-gray-500";
+                          dotColor = "bg-gray-400";
+                        } else if (status === "busy") {
+                          statusText = "Busy";
+                          statusColor = "text-yellow-600";
+                          dotColor = "bg-yellow-500";
+                        } else if (status === "away") {
+                          statusText = "Away";
+                          statusColor = "text-orange-600";
+                          dotColor = "bg-orange-500";
+                        }
+                      } catch (error) {
+                        console.error("Error parsing availability settings:", error);
+                      }
+                    }
+                    
+                    return (
+                      <>
+                        <div className={`h-2 w-2 ${dotColor} rounded-full`}></div>
+                        <span className={`text-sm font-medium ${statusColor}`}>
+                          {statusText}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <div className="space-y-2">
@@ -647,7 +683,10 @@ const Profile = () => {
               {/* Action Buttons - Only show for own profile */}
               {isOwnProfile && (
                 <div className="space-y-3">
-                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => navigate("/settings")}
+                  >
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Profile Info
                   </Button>

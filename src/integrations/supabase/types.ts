@@ -71,9 +71,16 @@ export type Database = {
           bio: string | null
           created_at: string
           full_name: string | null
+          hourly_rate: number | null
           id: string
+          instagram: string | null
+          is_available: boolean | null
+          linkedin: string | null
+          location: string | null
+          twitter: string | null
           updated_at: string
           username: string
+          website: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -81,9 +88,16 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name?: string | null
+          hourly_rate?: number | null
           id: string
+          instagram?: string | null
+          is_available?: boolean | null
+          linkedin?: string | null
+          location?: string | null
+          twitter?: string | null
           updated_at?: string
           username: string
+          website?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -91,9 +105,16 @@ export type Database = {
           bio?: string | null
           created_at?: string
           full_name?: string | null
+          hourly_rate?: number | null
           id?: string
+          instagram?: string | null
+          is_available?: boolean | null
+          linkedin?: string | null
+          location?: string | null
+          twitter?: string | null
           updated_at?: string
           username?: string
+          website?: string | null
         }
         Relationships: []
       }
