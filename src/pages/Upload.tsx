@@ -21,9 +21,18 @@ export default function Upload() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isVideoSelected, setIsVideoSelected] = useState<boolean>(false);
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Only allow video uploads for specific categories: Edited Video and Motion
+  const isVideoCategory = (() => {
+    const selected = categories.find((c) => c.id === categoryId);
+    if (!selected) return false;
+    const name = (selected.name || "").toLowerCase();
+    return name === "edited video" || name === "motion";
+  })();
 
   useEffect(() => {
     checkAuth();
@@ -55,6 +64,7 @@ export default function Upload() {
     const file = e.target.files?.[0];
     if (file) {
       setImageFile(file);
+      setIsVideoSelected(file.type.startsWith("video/"));
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
@@ -66,6 +76,7 @@ export default function Upload() {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+    setIsVideoSelected(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,7 +85,7 @@ export default function Upload() {
     if (!imageFile) {
       toast({
         title: "Error",
-        description: "Please select an image",
+        description: isVideoCategory ? "Please select a video" : "Please select an image",
         variant: "destructive",
       });
       return;
@@ -86,7 +97,7 @@ export default function Upload() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Upload image
+      // Upload media (image or video)
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
       
@@ -101,7 +112,7 @@ export default function Upload() {
         .from("projects")
         .getPublicUrl(fileName);
 
-      // Create project
+      // Create project (store media URL in image_url for now)
       const { error: projectError } = await supabase
         .from("projects")
         .insert({
@@ -143,14 +154,14 @@ export default function Upload() {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label>Project Image *</Label>
+                <Label>Project {isVideoCategory ? "Video" : "Image"} *</Label>
                 {imagePreview ? (
                   <div className="relative">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-lg"
-                    />
+                    {isVideoSelected ? (
+                      <video src={imagePreview} className="w-full h-64 object-cover rounded-lg" controls />
+                    ) : (
+                      <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
+                    )}
                     <Button
                       type="button"
                       variant="destructive"
@@ -168,12 +179,14 @@ export default function Upload() {
                       <p className="mb-2 text-sm text-muted-foreground">
                         <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG, or WEBP (MAX. 10MB)</p>
+                      <p className="text-xs text-muted-foreground">
+                        {isVideoCategory ? "MP4, WebM, MOV (MAX. 200MB)" : "PNG, JPG, or WEBP (MAX. 10MB)"}
+                      </p>
                     </div>
                     <Input
                       type="file"
                       className="hidden"
-                      accept="image/*"
+                      accept={isVideoCategory ? "video/*" : "image/*"}
                       onChange={handleImageChange}
                     />
                   </label>

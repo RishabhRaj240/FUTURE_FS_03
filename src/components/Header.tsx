@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileHoverCard } from "@/components/ProfileHoverCard";
-import { Search, Bell, Upload, Filter, ChevronDown } from "lucide-react";
+import { EnhancedSearch } from "@/components/EnhancedSearch";
+import { Bell, Upload, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
@@ -14,7 +14,6 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export const Header = () => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,12 +48,6 @@ export const Header = () => {
     setProfile(profileData);
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/?search=${encodeURIComponent(searchQuery)}`);
-    }
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
@@ -146,22 +139,7 @@ export const Header = () => {
 
         {/* Search + filter row */}
         <div className="flex items-center gap-3 pb-3">
-          <Button variant="outline" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
-          <form onSubmit={handleSearch} className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search Behance..."
-                className="pl-10 h-10 rounded-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-          </form>
+          <EnhancedSearch />
           <div className="hidden md:flex items-center gap-2 rounded-full border px-1 py-1 bg-white">
             <Button variant="secondary" className="rounded-full px-4 h-8">
               Projects

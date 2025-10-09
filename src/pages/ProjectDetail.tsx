@@ -6,6 +6,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ProfileHoverCard } from "@/components/ProfileHoverCard";
 import {
@@ -23,7 +25,8 @@ import {
   Edit,
   Trash2,
   Upload,
-  Camera
+  Camera,
+  Send
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -47,11 +50,24 @@ const ProjectDetail = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [savesCount, setSavesCount] = useState(0);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isCommenting, setIsCommenting] = useState(false);
+  const [commentsCount, setCommentsCount] = useState(0);
 
   useEffect(() => {
     loadProject();
     getCurrentUser();
   }, [id]);
+
+  useEffect(() => {
+    if (currentUser && project) {
+      checkIfSaved();
+    }
+  }, [currentUser, project]);
 
   const getCurrentUser = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,6 +97,8 @@ const ProjectDetail = () => {
 
       setProject(projectData);
       setLikesCount(projectData.likes_count);
+      setSavesCount(projectData.saves_count || 0);
+      setCommentsCount(projectData.comments_count || 0);
 
       // Check if current user has liked this project
       const { data: { user } } = await supabase.auth.getUser();
@@ -94,6 +112,9 @@ const ProjectDetail = () => {
 
         setLocalLiked(!!likeData);
       }
+
+      // Load comments
+      loadComments();
     } catch (error) {
       console.error("Error:", error);
       navigate("/404");
@@ -171,6 +192,134 @@ const ProjectDetail = () => {
     }
   };
 
+  const handleSave = async () => {
+    if (!currentUser || !project) return;
+
+    setIsSaving(true);
+    try {
+      if (isSaved) {
+        // Unsave the project
+        const { error } = await supabase
+          .from("saves")
+          .delete()
+          .eq("user_id", currentUser.id)
+          .eq("project_id", project.id);
+
+        if (error) throw error;
+
+        setIsSaved(false);
+        setSavesCount(prev => Math.max(0, prev - 1));
+        toast({
+          title: "Removed from saves",
+          description: "Project removed from your saved items",
+        });
+      } else {
+        // Save the project
+        const { error } = await supabase
+          .from("saves")
+          .insert({
+            user_id: currentUser.id,
+            project_id: project.id
+          });
+
+        if (error) throw error;
+
+        setIsSaved(true);
+        setSavesCount(prev => prev + 1);
+        toast({
+          title: "Saved",
+          description: "Project added to your saved items",
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling save:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update save status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleComment = async () => {
+    if (!currentUser || !project || !newComment.trim()) return;
+
+    setIsCommenting(true);
+    try {
+      const { error } = await supabase
+        .from("comments")
+        .insert({
+          user_id: currentUser.id,
+          project_id: project.id,
+          content: newComment.trim()
+        });
+
+      if (error) throw error;
+
+      setNewComment("");
+      loadComments();
+      setCommentsCount(prev => prev + 1);
+      toast({
+        title: "Comment added",
+        description: "Your comment has been posted",
+      });
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add comment",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCommenting(false);
+    }
+  };
+
+  const loadComments = async () => {
+    if (!project) return;
+
+    try {
+      const { data: commentsData, error } = await supabase
+        .from("comments")
+        .select(`
+          *,
+          profiles:user_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `)
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setComments(commentsData || []);
+    } catch (error) {
+      console.error("Error loading comments:", error);
+    }
+  };
+
+  const checkIfSaved = async () => {
+    if (!currentUser || !project) return;
+
+    try {
+      const { data: saveData } = await supabase
+        .from("saves")
+        .select("id")
+        .eq("user_id", currentUser.id)
+        .eq("project_id", project.id)
+        .single();
+
+      setIsSaved(!!saveData);
+    } catch (error) {
+      console.error("Error checking save status:", error);
+    }
+  };
+
   const isProjectOwner = currentUser && project && currentUser.id === project.user_id;
 
   const handleDeleteImage = async () => {
@@ -234,6 +383,9 @@ const ProjectDetail = () => {
 
     setIsUploading(true);
     try {
+      // Keep reference to the previous image URL so we can clean it up after updating
+      const previousImageUrl = project.image_url;
+
       // Validate file type
       if (!file.type.startsWith('image/')) {
         toast({
@@ -283,6 +435,30 @@ const ProjectDetail = () => {
       // Update local state
       setProject({ ...project, image_url: publicUrl });
       setIsEditMode(false);
+
+      // Best-effort: remove the old image from storage to avoid orphaned files
+      try {
+        if (previousImageUrl && !previousImageUrl.endsWith('/placeholder.svg')) {
+          const prevUrl = new URL(previousImageUrl);
+          // Expect: /storage/v1/object/public/projects/<path>
+          const prevPath = prevUrl.pathname.split('/').slice(5).join('/');
+          // Fallback for different path structures
+          const altPrevPath = prevUrl.pathname.split('/').slice(3).join('/');
+          const candidatePaths = [prevPath, altPrevPath].filter(Boolean);
+
+          for (const p of candidatePaths) {
+            if (!p) continue;
+            const { error: removeError } = await supabase.storage
+              .from('projects')
+              .remove([p]);
+            // If one removal path works, stop trying others
+            if (!removeError) break;
+          }
+        }
+      } catch (cleanupError) {
+        // Non-fatal: log but don't interrupt user flow
+        console.warn('Failed to cleanup previous image:', cleanupError);
+      }
       
       toast({
         title: "Success",
@@ -365,13 +541,17 @@ const ProjectDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Project Image */}
+            {/* Project Media */}
             <div className="relative overflow-hidden rounded-lg bg-white shadow-sm group">
-              <img
-                src={project.image_url}
-                alt={project.title}
-                className="w-full h-auto object-cover"
-              />
+              {/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(project.image_url) ? (
+                <video src={project.image_url} className="w-full h-auto" controls autoPlay muted loop playsInline />
+              ) : (
+                <img
+                  src={project.image_url}
+                  alt={project.title}
+                  className="w-full h-auto object-cover"
+                />
+              )}
               
               {/* Edit Mode Overlay */}
               {isProjectOwner && (
@@ -535,14 +715,25 @@ const ProjectDetail = () => {
                   </Button>
                 </div>
                 
-                <Button variant="outline" size="sm" className="w-full">
-                  <Bookmark className="h-4 w-4 mr-2" />
-                  Save
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  onClick={handleSave}
+                  disabled={isSaving || !currentUser}
+                >
+                  <Bookmark className={`h-4 w-4 mr-2 ${isSaved ? 'fill-blue-500 text-blue-500' : ''}`} />
+                  {isSaved ? 'Saved' : 'Save'} ({savesCount})
                 </Button>
                 
-                <Button variant="outline" size="sm" className="w-full">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="w-full"
+                  disabled={!currentUser}
+                >
                   <MessageCircle className="h-4 w-4 mr-2" />
-                  Comment
+                  Comment ({commentsCount})
                 </Button>
               </div>
             </Card>
@@ -624,6 +815,103 @@ const ProjectDetail = () => {
                   </div>
                   <span className="font-medium text-gray-900">{likesCount}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Bookmark className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">Saves</span>
+                  </div>
+                  <span className="font-medium text-gray-900">{savesCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">Comments</span>
+                  </div>
+                  <span className="font-medium text-gray-900">{commentsCount}</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* Comments Section */}
+            <Card className="p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Comments ({commentsCount})</h3>
+              
+              {/* Add Comment Form */}
+              {currentUser ? (
+                <div className="mb-6">
+                  <div className="flex gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={currentUser.user_metadata?.avatar_url} />
+                      <AvatarFallback>
+                        {currentUser.user_metadata?.full_name?.[0] || currentUser.email?.[0].toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <Textarea
+                        placeholder="Add a comment..."
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        className="min-h-[80px] resize-none"
+                      />
+                      <div className="flex justify-end mt-2">
+                        <Button
+                          onClick={handleComment}
+                          disabled={isCommenting || !newComment.trim()}
+                          size="sm"
+                        >
+                          {isCommenting ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                              Posting...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-4 w-4 mr-2" />
+                              Post Comment
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mb-6 p-4 bg-muted rounded-lg text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Please log in to add a comment
+                  </p>
+                </div>
+              )}
+
+              {/* Comments List */}
+              <div className="space-y-4">
+                {comments.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No comments yet. Be the first to comment!
+                  </p>
+                ) : (
+                  comments.map((comment) => (
+                    <div key={comment.id} className="flex gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={comment.profiles?.avatar_url} />
+                        <AvatarFallback>
+                          {comment.profiles?.full_name?.[0] || comment.profiles?.username?.[0] || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">
+                            {comment.profiles?.full_name || comment.profiles?.username}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(comment.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-700">{comment.content}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
           </div>

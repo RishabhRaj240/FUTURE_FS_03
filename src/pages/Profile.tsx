@@ -31,6 +31,7 @@ type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
   categories: Database["public"]["Tables"]["categories"]["Row"] | null;
   isLiked?: boolean;
+  isSaved?: boolean;
 };
 
 const Profile = () => {
@@ -85,7 +86,24 @@ const Profile = () => {
       if (projectsError) {
         console.error("Error loading projects:", projectsError);
       } else {
-        setProjects(projectsData || []);
+        // Check if current user has liked these projects
+        if (currentUser) {
+          const { data: likesData } = await supabase
+            .from("likes")
+            .select("project_id")
+            .eq("user_id", currentUser.id);
+
+          const likedProjectIds = new Set(likesData?.map(like => like.project_id) || []);
+
+          const projectsWithLikes = (projectsData || []).map(project => ({
+            ...project,
+            isLiked: likedProjectIds.has(project.id),
+          })) as Project[];
+
+          setProjects(projectsWithLikes);
+        } else {
+          setProjects(projectsData || []);
+        }
       }
     } catch (error) {
       console.error("Error:", error);
@@ -93,7 +111,7 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [username, navigate]);
+  }, [username, navigate, currentUser]);
 
   useEffect(() => {
     loadProfileData();
@@ -744,11 +762,24 @@ const Profile = () => {
                           className="group cursor-pointer hover:shadow-lg transition-shadow duration-200 overflow-hidden"
                         >
                           <div className="aspect-[4/3] overflow-hidden">
-                            <img
-                              src={project.image_url}
-                              alt={project.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                            />
+                            {/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(project.image_url) ? (
+                              <video
+                                src={project.image_url}
+                                className="w-full h-full object-cover"
+                                controls
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                preload="metadata"
+                              />
+                            ) : (
+                              <img
+                                src={project.image_url}
+                                alt={project.title}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                            )}
                           </div>
                           <CardContent className="p-4">
                             <h3 className="font-semibold text-gray-900 mb-1 line-clamp-1">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,9 @@ export const ProfileHoverCard = ({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showCard, setShowCard] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -57,6 +60,37 @@ export const ProfileHoverCard = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleMouseEnter = () => {
+    // Clear any existing leave timeout
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+
+    // Set hover delay before showing the card
+    hoverTimeoutRef.current = setTimeout(() => {
+      setShowCard(true);
+      // Small delay for smooth transition
+      setTimeout(() => setIsVisible(true), 10);
+    }, 500); // 500ms delay before showing
+  };
+
+  const handleMouseLeave = () => {
+    // Clear any existing hover timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+
+    // Start fade out transition
+    setIsVisible(false);
+    
+    // Hide the card after transition completes
+    leaveTimeoutRef.current = setTimeout(() => {
+      setShowCard(false);
+    }, 400); // 400ms delay before hiding
   };
 
   const handleSignOut = async () => {
@@ -85,6 +119,25 @@ export const ProfileHoverCard = ({
     }
   };
 
+  const handleMenuClick = (path: string) => {
+    navigate(path);
+    // Close the dropdown after navigation
+    setIsVisible(false);
+    setTimeout(() => setShowCard(false), 200);
+  };
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      if (leaveTimeoutRef.current) {
+        clearTimeout(leaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (loading || !profile) {
     return <>{children}</>;
   }
@@ -92,18 +145,29 @@ export const ProfileHoverCard = ({
   return (
     <div
       className="relative inline-block"
-      onMouseEnter={() => setShowCard(true)}
-      onMouseLeave={() => setShowCard(false)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {children}
 
       {showCard && (
-        <Card className="absolute top-full right-0 mt-2 w-80 z-50 bg-white border border-gray-200 shadow-lg rounded-lg max-h-96 overflow-y-auto">
+        <Card 
+          className={`absolute top-full right-0 mt-3 w-80 z-50 bg-white border border-gray-200 shadow-lg rounded-lg max-h-96 overflow-y-auto transition-all duration-500 ease-in-out ${
+            isVisible 
+              ? 'opacity-100 translate-y-0 scale-100' 
+              : 'opacity-0 -translate-y-2 scale-95'
+          }`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
           <CardContent className="p-0">
             {/* Profile Section */}
             <div className="p-6 text-center border-b border-gray-100">
               <div className="flex justify-center mb-4">
-                <Avatar className="h-16 w-16 border-2 border-gray-200">
+                <Avatar 
+                  className="h-16 w-16 border-2 border-gray-200 cursor-pointer hover:ring-4 hover:ring-blue-200 transition-all duration-200"
+                  onClick={() => navigate(`/${profile.username}`)}
+                >
                   <AvatarImage src={profile.avatar_url || ""} />
                   <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-lg">
                     {profile.full_name?.[0] ||
@@ -112,11 +176,19 @@ export const ProfileHoverCard = ({
                 </Avatar>
               </div>
 
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+              <h3 
+                className="text-lg font-semibold text-gray-900 mb-1 cursor-pointer hover:text-blue-600 transition-colors duration-200"
+                onClick={() => navigate(`/${profile.username}`)}
+              >
                 {profile.full_name || profile.username}
               </h3>
 
-              <p className="text-sm text-gray-500 mb-4">{profile.username}</p>
+              <p 
+                className="text-sm text-gray-500 mb-4 cursor-pointer hover:text-blue-600 transition-colors duration-200"
+                onClick={() => navigate(`/${profile.username}`)}
+              >
+                {profile.username}
+              </p>
 
               <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg">
                 <Crown className="h-4 w-4 mr-2" />
@@ -137,7 +209,10 @@ export const ProfileHoverCard = ({
               </div>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors">
+                <div 
+                  className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
+                  onClick={() => handleMenuClick("/hirer-dashboard")}
+                >
                   <div className="flex items-center gap-3">
                     <Users className="h-4 w-4 text-gray-600" />
                     <span className="text-sm font-medium text-gray-900">
@@ -147,7 +222,10 @@ export const ProfileHoverCard = ({
                   <ArrowRight className="h-4 w-4 text-gray-400" />
                 </div>
 
-                <div className="cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors">
+                <div 
+                  className="cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
+                  onClick={() => handleMenuClick("/profile?tab=availability")}
+                >
                   <div className="text-sm font-medium text-gray-900 mb-1">
                     Edit My Availability
                   </div>
@@ -161,32 +239,50 @@ export const ProfileHoverCard = ({
             {/* Navigation Links Section */}
             <div className="p-2">
               <div className="space-y-1">
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => handleMenuClick(`/${profile.username}`)}
+                >
                   <Settings className="h-4 w-4 text-gray-600" />
                   CreativeHub Profile
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => window.open("https://portfolio.adobe.com", "_blank")}
+                >
                   <Briefcase className="h-4 w-4 text-gray-600" />
                   Adobe Portfolio
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => handleMenuClick("/analytics")}
+                >
                   <BarChart3 className="h-4 w-4 text-gray-600" />
                   Stats & Insights
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => handleMenuClick("/freelance")}
+                >
                   <Briefcase className="h-4 w-4 text-gray-600" />
                   Manage Freelance Projects
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => handleMenuClick("/purchases")}
+                >
                   <ShoppingBag className="h-4 w-4 text-gray-600" />
                   Purchases
                 </div>
 
-                <div className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors">
+                <div 
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
+                  onClick={() => handleMenuClick("/settings")}
+                >
                   <Settings className="h-4 w-4 text-gray-600" />
                   Settings
                 </div>

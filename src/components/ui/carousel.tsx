@@ -80,6 +80,23 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
       [scrollPrev, scrollNext],
     );
 
+    const handleWheel = React.useCallback(
+      (event: React.WheelEvent<HTMLDivElement>) => {
+        // Treat horizontal touchpad scroll (or Shift + wheel) as carousel navigation
+        const deltaX = Math.abs(event.deltaX) >= Math.abs(event.deltaY) ? event.deltaX : (event.shiftKey ? event.deltaY : 0);
+        if (!deltaX) return;
+        // Small threshold to avoid accidental triggers
+        if (Math.abs(deltaX) < 3) return;
+        event.preventDefault();
+        if (deltaX > 0) {
+          scrollNext();
+        } else {
+          scrollPrev();
+        }
+      },
+      [scrollNext, scrollPrev],
+    );
+
     React.useEffect(() => {
       if (!api || !setApi) {
         return;
@@ -118,6 +135,7 @@ const Carousel = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivEl
         <div
           ref={ref}
           onKeyDownCapture={handleKeyDown}
+          onWheelCapture={handleWheel}
           className={cn("relative", className)}
           role="region"
           aria-roledescription="carousel"
@@ -177,11 +195,11 @@ const CarouselPrevious = React.forwardRef<HTMLButtonElement, React.ComponentProp
         className={cn(
           "absolute h-8 w-8 rounded-full",
           orientation === "horizontal"
-            ? "-left-12 top-1/2 -translate-y-1/2"
+            ? "-left-3 top-1/2 -translate-y-1/2"
             : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
           className,
         )}
-        disabled={!canScrollPrev}
+        disabled={false}
         onClick={scrollPrev}
         {...props}
       >
@@ -205,11 +223,11 @@ const CarouselNext = React.forwardRef<HTMLButtonElement, React.ComponentProps<ty
         className={cn(
           "absolute h-8 w-8 rounded-full",
           orientation === "horizontal"
-            ? "-right-12 top-1/2 -translate-y-1/2"
+            ? "-right-3 top-1/2 -translate-y-1/2"
             : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
           className,
         )}
-        disabled={!canScrollNext}
+        disabled={false}
         onClick={scrollNext}
         {...props}
       >

@@ -9,9 +9,11 @@ type Project = Database["public"]["Tables"]["projects"]["Row"] & {
 interface ProjectGridProps {
   projects: Project[];
   onProjectUpdate?: () => void;
+  onSaveToggle?: () => void;
+  isBestSection?: boolean;
 }
 
-export const ProjectGrid = ({ projects, onProjectUpdate }: ProjectGridProps) => {
+export const ProjectGrid = ({ projects, onProjectUpdate, onSaveToggle, isBestSection = false }: ProjectGridProps) => {
   if (projects.length === 0) {
     return (
       <div className="text-center py-20">
@@ -23,11 +25,14 @@ export const ProjectGrid = ({ projects, onProjectUpdate }: ProjectGridProps) => 
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-      {projects.map((project) => (
+      {projects.map((project, index) => (
         <ProjectCard 
           key={project.id} 
           project={project}
           onLikeToggle={onProjectUpdate}
+          onSaveToggle={onSaveToggle}
+          isBestSection={isBestSection}
+          rank={isBestSection ? index + 1 : undefined}
         />
       ))}
     </div>
