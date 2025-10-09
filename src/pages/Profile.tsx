@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("work");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const hasLoadedProfile = useRef(false);
 
   const getCurrentUser = async () => {
     const {
@@ -52,9 +53,11 @@ const Profile = () => {
   };
 
   const loadProfileData = useCallback(async () => {
-    if (!username) return;
+    if (!username || hasLoadedProfile.current) return;
 
     setLoading(true);
+    hasLoadedProfile.current = true;
+    
     try {
       // Load profile
       const { data: profileData, error: profileError } = await supabase
@@ -85,25 +88,9 @@ const Profile = () => {
 
       if (projectsError) {
         console.error("Error loading projects:", projectsError);
+        setProjects([]);
       } else {
-        // Check if current user has liked these projects
-        if (currentUser) {
-          const { data: likesData } = await supabase
-            .from("likes")
-            .select("project_id")
-            .eq("user_id", currentUser.id);
-
-          const likedProjectIds = new Set(likesData?.map(like => like.project_id) || []);
-
-          const projectsWithLikes = (projectsData || []).map(project => ({
-            ...project,
-            isLiked: likedProjectIds.has(project.id),
-          })) as Project[];
-
-          setProjects(projectsWithLikes);
-        } else {
-          setProjects(projectsData || []);
-        }
+        setProjects(projectsData || []);
       }
     } catch (error) {
       console.error("Error:", error);
@@ -111,11 +98,13 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  }, [username, navigate, currentUser]);
+  }, [username, navigate]);
 
   useEffect(() => {
-    loadProfileData();
     getCurrentUser();
+    loadProfileData();
+    // Reset the ref when username changes
+    hasLoadedProfile.current = false;
   }, [username, loadProfileData]);
 
   const updateProfileImage = async (imageUrl: string) => {
