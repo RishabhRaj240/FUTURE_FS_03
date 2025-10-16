@@ -56,44 +56,12 @@ interface CategoryFilterProps {
 
 export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionChange, activeSection = "all" }: CategoryFilterProps) => {
   const [categories, setCategories] = useState<Category[]>([]);
+  
+  // Featured tabs for special sections
   const featuredTabs = [
     { id: "all", label: "All", icon: Grid3X3 },
     { id: "following", label: "Following", icon: Users },
-    { id: "best", label: "Best of Behance", icon: Crown },
-    { id: "photoshop-sketch", label: "Photoshop Sketch", icon: Palette },
-    { id: "edited-video", label: "Edited Video", icon: Video },
-    { id: "figma", label: "Figma", icon: Figma },
-    { id: "framer", label: "Framer", icon: Zap },
-    { id: "lightroom", label: "Lightroom", icon: Camera },
-    { id: "illustration", label: "Illustration", icon: Brush },
-    { id: "web-design", label: "Web Design", icon: Globe },
-    { id: "mobile-app", label: "Mobile App", icon: Smartphone },
-    { id: "branding", label: "Branding", icon: Star },
-    { id: "typography", label: "Typography", icon: Type },
-    { id: "photography", label: "Photography", icon: Camera },
-    { id: "ui-ux", label: "UI/UX", icon: Layers },
-    { id: "motion-graphics", label: "Motion Graphics", icon: Zap },
-    { id: "icon-design", label: "Icon Design", icon: Target },
-    { id: "print-design", label: "Print Design", icon: BookOpen },
-    { id: "packaging", label: "Packaging", icon: Box },
-    { id: "architecture", label: "Architecture", icon: Building2 },
-    { id: "interior-design", label: "Interior Design", icon: Home },
-    { id: "fashion", label: "Fashion", icon: Scissors },
-    { id: "music-art", label: "Music Art", icon: Music },
-    { id: "game-design", label: "Game Design", icon: Gamepad2 },
-    { id: "data-viz", label: "Data Viz", icon: BarChart3 },
-    { id: "editorial", label: "Editorial", icon: PenTool },
-    { id: "social-media", label: "Social Media", icon: Heart },
-    { id: "logo-design", label: "Logo Design", icon: Award },
-    { id: "infographic", label: "Infographic", icon: ImageIcon },
-    { id: "product-design", label: "Product Design", icon: Monitor },
-    { id: "concept-art", label: "Concept Art", icon: Sparkles },
-    { id: "street-art", label: "Street Art", icon: Brush },
-    { id: "digital-art", label: "Digital Art", icon: Palette },
-    { id: "3d-modeling", label: "3D Modeling", icon: Shapes },
-    { id: "animation", label: "Animation", icon: Video },
-    { id: "coding", label: "Coding", icon: Code },
-    { id: "startup", label: "Startup", icon: Rocket }
+    { id: "best", label: "Best of Creative Hub", icon: Crown }
   ];
 
   const getCategoryIcon = (categoryName: string) => {
@@ -113,7 +81,7 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
     const { data, error } = await supabase
       .from("categories")
       .select("*")
-      .order("created_at");
+      .order("name");
 
     if (error) {
       console.error("Error loading categories:", error);
@@ -122,6 +90,10 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
 
     setCategories(data || []);
   };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   return (
     <div className="border-b bg-background">
@@ -132,6 +104,7 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
 
           <Carousel opts={{ align: "start", dragFree: true }} className="px-6">
             <CarouselContent className="-ml-2">
+              {/* Featured tabs */}
               {featuredTabs.map((tab) => {
                 const IconComponent = tab.icon;
                 return (
@@ -140,15 +113,7 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
                       variant={activeSection === tab.id ? "default" : "secondary"}
                       size="sm"
                       onClick={() => {
-                        // Inform parent about section change if provided
                         onSectionChange?.(tab.id);
-                        // Try mapping any tab label to a category name (case-insensitive)
-                        const matched = categories.find(c => c.name.toLowerCase() === tab.label.toLowerCase());
-                        if (matched) {
-                          onCategoryChange(matched.id as unknown as string);
-                          return;
-                        }
-                        // Default behavior resets category filter
                         onCategoryChange(null);
                       }}
                       className={activeSection === tab.id 
@@ -163,25 +128,20 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
                 );
               })}
 
-              {categories.length > 0 && categories.map((category) => {
+              {/* Database categories */}
+              {categories.map((category) => {
                 const CategoryIcon = getCategoryIcon(category.name);
+                const isSelected = activeSection === "category" && selectedCategory === category.id;
                 return (
                   <CarouselItem key={category.id} className="basis-auto pl-2">
                     <Button
-                      variant={(activeSection === "category" || activeSection === "motion" || activeSection === "edited-video") && selectedCategory === category.id ? "default" : "secondary"}
+                      variant={isSelected ? "default" : "secondary"}
                       size="sm"
                       onClick={() => {
-                        const nameLower = (category.name || "").toLowerCase();
-                        if (nameLower === "motion") {
-                          onSectionChange?.("motion");
-                        } else if (nameLower === "edited video") {
-                          onSectionChange?.("edited-video");
-                        } else {
-                          onSectionChange?.("category");
-                        }
+                        onSectionChange?.("category");
                         onCategoryChange(category.id);
                       }}
-                      className={(activeSection === "category" || activeSection === "motion" || activeSection === "edited-video") && selectedCategory === category.id 
+                      className={isSelected 
                         ? "whitespace-nowrap rounded-xl px-4 h-9 gap-2 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-700 hover:to-teal-700 text-white shadow-lg"
                         : "whitespace-nowrap rounded-xl px-4 h-9 bg-white/80 backdrop-blur hover:bg-white shadow-sm gap-2 hover:shadow-md transition-all duration-200"
                       }

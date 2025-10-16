@@ -1,22 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "@/components/Header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { 
-  ChartContainer, 
-  ChartTooltip, 
-  ChartTooltipContent, 
-  ChartLegend, 
-  ChartLegendContent 
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
 } from "@/components/ui/chart";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   ResponsiveContainer,
   LineChart,
   Line,
@@ -24,18 +30,18 @@ import {
   Pie,
   Cell,
   Area,
-  AreaChart
+  AreaChart,
 } from "recharts";
-import { 
-  TrendingUp, 
-  Eye, 
-  Heart, 
-  Users, 
+import {
+  TrendingUp,
+  Eye,
+  Heart,
+  Users,
   Calendar,
   Download,
   Filter,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,45 +55,57 @@ const Analytics = () => {
     monthlyViews: [],
     categoryStats: [],
     engagementRate: 0,
-    topProjects: []
+    topProjects: [],
   });
 
   // Sample data for demonstration
-  const monthlyData = [
-    { month: "Jan", views: 1200, likes: 85, projects: 3 },
-    { month: "Feb", views: 1900, likes: 120, projects: 5 },
-    { month: "Mar", views: 2800, likes: 200, projects: 7 },
-    { month: "Apr", views: 3200, likes: 280, projects: 8 },
-    { month: "May", views: 4100, likes: 350, projects: 10 },
-    { month: "Jun", views: 3800, likes: 320, projects: 9 },
-  ];
+  const monthlyData = useMemo(
+    () => [
+      { month: "Jan", views: 1200, likes: 85, projects: 3 },
+      { month: "Feb", views: 1900, likes: 120, projects: 5 },
+      { month: "Mar", views: 2800, likes: 200, projects: 7 },
+      { month: "Apr", views: 3200, likes: 280, projects: 8 },
+      { month: "May", views: 4100, likes: 350, projects: 10 },
+      { month: "Jun", views: 3800, likes: 320, projects: 9 },
+    ],
+    []
+  );
 
-  const categoryData = [
-    { name: "UI/UX", value: 35, count: 12 },
-    { name: "Graphic Design", value: 25, count: 8 },
-    { name: "Photography", value: 20, count: 6 },
-    { name: "Illustration", value: 15, count: 5 },
-    { name: "3D Art", value: 5, count: 2 },
-  ];
+  const categoryData = useMemo(
+    () => [
+      { name: "UI/UX", value: 35, count: 12 },
+      { name: "Graphic Design", value: 25, count: 8 },
+      { name: "Photography", value: 20, count: 6 },
+      { name: "Illustration", value: 15, count: 5 },
+      { name: "3D Art", value: 5, count: 2 },
+    ],
+    []
+  );
 
-  const engagementData = [
-    { day: "Mon", engagement: 65 },
-    { day: "Tue", engagement: 78 },
-    { day: "Wed", engagement: 82 },
-    { day: "Thu", engagement: 75 },
-    { day: "Fri", engagement: 88 },
-    { day: "Sat", engagement: 92 },
-    { day: "Sun", engagement: 85 },
-  ];
+  const engagementData = useMemo(
+    () => [
+      { day: "Mon", engagement: 65 },
+      { day: "Tue", engagement: 78 },
+      { day: "Wed", engagement: 82 },
+      { day: "Thu", engagement: 75 },
+      { day: "Fri", engagement: 88 },
+      { day: "Sat", engagement: 92 },
+      { day: "Sun", engagement: 85 },
+    ],
+    []
+  );
 
-  const topProjectsData = [
-    { name: "Mobile App Design", views: 2500, likes: 180, engagement: 7.2 },
-    { name: "Brand Identity", views: 1800, likes: 145, engagement: 8.1 },
-    { name: "Website Redesign", views: 2200, likes: 165, engagement: 7.5 },
-    { name: "Logo Collection", views: 1500, likes: 120, engagement: 8.0 },
-  ];
+  const topProjectsData = useMemo(
+    () => [
+      { name: "Mobile App Design", views: 2500, likes: 180, engagement: 7.2 },
+      { name: "Brand Identity", views: 1800, likes: 145, engagement: 8.1 },
+      { name: "Website Redesign", views: 2200, likes: 165, engagement: 7.5 },
+      { name: "Logo Collection", views: 1500, likes: 120, engagement: 8.0 },
+    ],
+    []
+  );
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
   const chartConfig = {
     views: {
@@ -108,29 +126,36 @@ const Analytics = () => {
     },
   };
 
-  useEffect(() => {
-    loadAnalyticsData();
-  }, []);
-
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     try {
       // Load user's analytics data from Supabase
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
 
       // Get user's projects with stats
       const { data: projects } = await supabase
         .from("projects")
-        .select("id, title, views_count, likes_count, created_at, category_id, categories(name)")
+        .select(
+          "id, title, views_count, likes_count, created_at, category_id, categories(name)"
+        )
         .eq("user_id", user.id);
 
       if (projects) {
-        const totalViews = projects.reduce((sum, project) => sum + project.views_count, 0);
-        const totalLikes = projects.reduce((sum, project) => sum + project.likes_count, 0);
+        const totalViews = projects.reduce(
+          (sum, project) => sum + project.views_count,
+          0
+        );
+        const totalLikes = projects.reduce(
+          (sum, project) => sum + project.likes_count,
+          0
+        );
         const totalProjects = projects.length;
-        
+
         // Calculate engagement rate
-        const engagementRate = totalViews > 0 ? ((totalLikes / totalViews) * 100) : 0;
+        const engagementRate =
+          totalViews > 0 ? (totalLikes / totalViews) * 100 : 0;
 
         setAnalyticsData({
           totalViews,
@@ -140,7 +165,7 @@ const Analytics = () => {
           monthlyViews: monthlyData,
           categoryStats: categoryData,
           engagementRate: Math.round(engagementRate * 10) / 10,
-          topProjects: topProjectsData
+          topProjects: topProjectsData,
         });
       }
     } catch (error) {
@@ -148,7 +173,11 @@ const Analytics = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [monthlyData, categoryData, topProjectsData]);
+
+  useEffect(() => {
+    loadAnalyticsData();
+  }, [loadAnalyticsData]);
 
   if (loading) {
     return (
@@ -166,7 +195,7 @@ const Analytics = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Analytics & Insights</h1>
@@ -183,7 +212,9 @@ const Analytics = () => {
               <Eye className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analyticsData.totalViews.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {analyticsData.totalViews.toLocaleString()}
+              </div>
               <p className="text-xs text-muted-foreground">
                 <ArrowUpRight className="inline h-3 w-3 text-green-500" />
                 +12% from last month
@@ -197,7 +228,9 @@ const Analytics = () => {
               <Heart className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analyticsData.totalLikes.toLocaleString()}</div>
+              <div className="text-2xl font-bold">
+                {analyticsData.totalLikes.toLocaleString()}
+              </div>
               <p className="text-xs text-muted-foreground">
                 <ArrowUpRight className="inline h-3 w-3 text-green-500" />
                 +8% from last month
@@ -211,7 +244,9 @@ const Analytics = () => {
               <Calendar className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analyticsData.totalProjects}</div>
+              <div className="text-2xl font-bold">
+                {analyticsData.totalProjects}
+              </div>
               <p className="text-xs text-muted-foreground">
                 <ArrowUpRight className="inline h-3 w-3 text-green-500" />
                 +2 this month
@@ -221,11 +256,15 @@ const Analytics = () => {
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Engagement Rate</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Engagement Rate
+              </CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analyticsData.engagementRate}%</div>
+              <div className="text-2xl font-bold">
+                {analyticsData.engagementRate}%
+              </div>
               <p className="text-xs text-muted-foreground">
                 <ArrowUpRight className="inline h-3 w-3 text-green-500" />
                 +1.2% from last month
@@ -243,7 +282,7 @@ const Analytics = () => {
               <TabsTrigger value="categories">Categories</TabsTrigger>
               <TabsTrigger value="projects">Top Projects</TabsTrigger>
             </TabsList>
-            
+
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm">
                 <Filter className="h-4 w-4 mr-2" />
@@ -261,7 +300,9 @@ const Analytics = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Monthly Performance</CardTitle>
-                  <CardDescription>Views, likes, and projects over time</CardDescription>
+                  <CardDescription>
+                    Views, likes, and projects over time
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={chartConfig}>
@@ -290,11 +331,11 @@ const Analytics = () => {
                       <XAxis dataKey="day" />
                       <YAxis />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Area 
-                        type="monotone" 
-                        dataKey="engagement" 
-                        stroke="var(--color-engagement)" 
-                        fill="var(--color-engagement)" 
+                      <Area
+                        type="monotone"
+                        dataKey="engagement"
+                        stroke="var(--color-engagement)"
+                        fill="var(--color-engagement)"
                         fillOpacity={0.3}
                       />
                     </AreaChart>
@@ -308,7 +349,9 @@ const Analytics = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Engagement Analysis</CardTitle>
-                <CardDescription>Detailed engagement metrics and trends</CardDescription>
+                <CardDescription>
+                  Detailed engagement metrics and trends
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <ChartContainer config={chartConfig}>
@@ -317,10 +360,10 @@ const Analytics = () => {
                     <XAxis dataKey="day" />
                     <YAxis />
                     <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line 
-                      type="monotone" 
-                      dataKey="engagement" 
-                      stroke="var(--color-engagement)" 
+                    <Line
+                      type="monotone"
+                      dataKey="engagement"
+                      stroke="var(--color-engagement)"
                       strokeWidth={2}
                     />
                   </LineChart>
@@ -334,7 +377,9 @@ const Analytics = () => {
               <Card>
                 <CardHeader>
                   <CardTitle>Category Distribution</CardTitle>
-                  <CardDescription>Your work across different categories</CardDescription>
+                  <CardDescription>
+                    Your work across different categories
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ChartContainer config={chartConfig}>
@@ -344,13 +389,18 @@ const Analytics = () => {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        label={({ name, percent }) =>
+                          `${name} ${(percent * 100).toFixed(0)}%`
+                        }
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
                       >
                         {categoryData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
                       <ChartTooltip content={<ChartTooltipContent />} />
@@ -367,15 +417,22 @@ const Analytics = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {categoryData.map((category, index) => (
-                      <div key={category.name} className="flex items-center justify-between">
+                      <div
+                        key={category.name}
+                        className="flex items-center justify-between"
+                      >
                         <div className="flex items-center gap-3">
-                          <div 
-                            className="w-4 h-4 rounded-full" 
-                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{
+                              backgroundColor: COLORS[index % COLORS.length],
+                            }}
                           />
                           <span className="font-medium">{category.name}</span>
                         </div>
-                        <Badge variant="secondary">{category.count} projects</Badge>
+                        <Badge variant="secondary">
+                          {category.count} projects
+                        </Badge>
                       </div>
                     ))}
                   </div>
@@ -388,12 +445,17 @@ const Analytics = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Top Performing Projects</CardTitle>
-                <CardDescription>Your most successful projects by engagement</CardDescription>
+                <CardDescription>
+                  Your most successful projects by engagement
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
                   {topProjectsData.map((project, index) => (
-                    <div key={project.name} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div
+                      key={project.name}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex items-center gap-4">
                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center text-sm font-bold">
                           {index + 1}
@@ -413,8 +475,12 @@ const Analytics = () => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-sm font-medium">{project.engagement}% engagement</div>
-                        <div className="text-xs text-muted-foreground">Engagement rate</div>
+                        <div className="text-sm font-medium">
+                          {project.engagement}% engagement
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Engagement rate
+                        </div>
                       </div>
                     </div>
                   ))}

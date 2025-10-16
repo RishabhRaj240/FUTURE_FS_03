@@ -8,6 +8,7 @@ import { Database } from "@/integrations/supabase/types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
   profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
+  categories: Database["public"]["Tables"]["categories"]["Row"] | null;
   isLiked?: boolean;
   isSaved?: boolean;
 };
@@ -25,17 +26,17 @@ const Index = () => {
 
   const loadProjects = async () => {
     setLoading(true);
-    
-    const { data: { user } } = await supabase.auth.getUser();
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     const searchQuery = searchParams.get("search");
     const categoryFilter = searchParams.get("category");
     const sortBy = searchParams.get("sort") || "relevance";
     const dateRange = searchParams.get("date") || "all";
     const mediaType = searchParams.get("media") || "all";
 
-    let query = supabase
-      .from("projects")
-      .select(`
+    let query = supabase.from("projects").select(`
         *,
         profiles(*),
         categories(*)
@@ -43,7 +44,9 @@ const Index = () => {
 
     // Apply search query
     if (searchQuery) {
-      query = query.or(`title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`);
+      query = query.or(
+        `title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`
+      );
     }
 
     // Apply category filter
@@ -70,13 +73,22 @@ const Index = () => {
         query = query.order("created_at", { ascending: true });
         break;
       case "most_liked":
-        query = query.order("likes_count", { ascending: false, nullsFirst: false });
+        query = query.order("likes_count", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "most_saved":
-        query = query.order("saves_count", { ascending: false, nullsFirst: false });
+        query = query.order("saves_count", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "most_commented":
-        query = query.order("comments_count", { ascending: false, nullsFirst: false });
+        query = query.order("comments_count", {
+          ascending: false,
+          nullsFirst: false,
+        });
         break;
       case "relevance":
       default:
@@ -100,22 +112,52 @@ const Index = () => {
     const { data: projectsData, error: projectsError } = await query;
 
     let results = (projectsData || []) as Project[];
-    
+
+    console.log("Raw projects from database:", results.length, "projects");
+    console.log(
+      "Project URLs:",
+      results.map((p) => ({
+        title: p.title,
+        url: p.image_url,
+        category: p.categories?.name,
+      }))
+    );
+
     // Apply media type filter
-    const filterVideosOnly = activeSection === "edited-video" || activeSection === "motion" || mediaType === "videos";
+    const filterVideosOnly =
+      activeSection === "edited-video" ||
+      activeSection === "motion" ||
+      mediaType === "videos";
     const filterImagesOnly = mediaType === "images";
-    
+
+    console.log("Filtering projects:", {
+      activeSection,
+      mediaType,
+      filterVideosOnly,
+      filterImagesOnly,
+      totalProjects: results.length,
+    });
+
     if (filterVideosOnly) {
       // Show only videos
-      results = results.filter((p) => /(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(p.image_url || ""));
+      results = results.filter((p) =>
+        /(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(p.image_url || "")
+      );
+      console.log("After video filter:", results.length, "videos found");
     } else if (filterImagesOnly) {
       // Show only images
-      results = results.filter((p) => !/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(p.image_url || ""));
+      results = results.filter(
+        (p) => !/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(p.image_url || "")
+      );
+      console.log("After image filter:", results.length, "images found");
     } else if (activeSection !== "edited-video" && activeSection !== "motion") {
-      // In all other sections, hide videos unless specifically searching
-      if (!searchQuery) {
-        results = results.filter((p) => !/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(p.image_url || ""));
-      }
+      // In all other sections, show both images and videos
+      // No filtering needed - show all content
+      console.log(
+        "Showing all content (images + videos):",
+        results.length,
+        "total projects"
+      );
     }
 
     if (projectsError) {
@@ -135,10 +177,14 @@ const Index = () => {
         .select("project_id")
         .eq("user_id", user.id);
 
-      const likedProjectIds = new Set(likesData?.map(like => like.project_id) || []);
-      const savedProjectIds = new Set(savesData?.map(save => save.project_id) || []);
+      const likedProjectIds = new Set(
+        likesData?.map((like) => like.project_id) || []
+      );
+      const savedProjectIds = new Set(
+        savesData?.map((save) => save.project_id) || []
+      );
 
-      const projectsWithLikesAndSaves = (results.map(project => ({
+      const projectsWithLikesAndSaves = (results.map((project) => ({
         ...project,
         isLiked: likedProjectIds.has(project.id),
         isSaved: savedProjectIds.has(project.id),
@@ -174,13 +220,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <CategoryFilter 
+      <CategoryFilter
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         onSectionChange={setActiveSection}
         activeSection={activeSection}
       />
-      
+
       <main className="container px-4 py-8">
         {/* Search Results Header */}
         {searchParams.get("search") && (
@@ -189,7 +235,8 @@ const Index = () => {
               Search results for "{searchParams.get("search")}"
             </h1>
             <p className="text-muted-foreground">
-              {projects.length} {projects.length === 1 ? 'project' : 'projects'} found
+              {projects.length} {projects.length === 1 ? "project" : "projects"}{" "}
+              found
             </p>
           </div>
         )}
@@ -197,21 +244,21 @@ const Index = () => {
         {activeSection === "best" && (
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-orange-600 bg-clip-text text-transparent mb-2">
-              Best of Behance
+              Best of Creative Hub
             </h1>
             <p className="text-muted-foreground">
               Discover the most loved creative works from our community
             </p>
           </div>
         )}
-        
+
         {loading ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground">Loading projects...</p>
           </div>
         ) : (
-          <ProjectGrid 
-            projects={projects} 
+          <ProjectGrid
+            projects={projects}
             onProjectUpdate={loadProjects}
             onSaveToggle={loadProjects}
             isBestSection={activeSection === "best"}

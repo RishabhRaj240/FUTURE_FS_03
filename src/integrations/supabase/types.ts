@@ -64,12 +64,50 @@ export type Database = {
           },
         ]
       }
+      followers: {
+        Row: {
+          created_at: string
+          follower_id: string
+          following_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          following_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          following_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followers_follower_id_fkey"
+            columns: ["follower_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "followers_following_id_fkey"
+            columns: ["following_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
           banner_url: string | null
           bio: string | null
           created_at: string
+          followers_count: number
+          following_count: number
           full_name: string | null
           hourly_rate: number | null
           id: string
@@ -87,6 +125,8 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string
+          followers_count?: number
+          following_count?: number
           full_name?: string | null
           hourly_rate?: number | null
           id: string
@@ -104,6 +144,8 @@ export type Database = {
           banner_url?: string | null
           bio?: string | null
           created_at?: string
+          followers_count?: number
+          following_count?: number
           full_name?: string | null
           hourly_rate?: number | null
           id?: string

@@ -8,7 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ProfileHoverCard } from "@/components/ProfileHoverCard";
 import {
   Heart,
@@ -26,7 +36,9 @@ import {
   Trash2,
   Upload,
   Camera,
-  Send
+  Send,
+  UserPlus,
+  UserCheck,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -57,6 +69,10 @@ const ProjectDetail = () => {
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [commentsCount, setCommentsCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isFollowingLoading, setIsFollowingLoading] = useState(false);
+  const [followersCount, setFollowersCount] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -66,11 +82,14 @@ const ProjectDetail = () => {
   useEffect(() => {
     if (currentUser && project) {
       checkIfSaved();
+      checkIfFollowing();
     }
   }, [currentUser, project]);
 
   const getCurrentUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     setCurrentUser(user);
   };
 
@@ -81,11 +100,13 @@ const ProjectDetail = () => {
     try {
       const { data: projectData, error: projectError } = await supabase
         .from("projects")
-        .select(`
+        .select(
+          `
           *,
           profiles(*),
           categories(*)
-        `)
+        `
+        )
         .eq("id", id)
         .single();
 
@@ -99,9 +120,12 @@ const ProjectDetail = () => {
       setLikesCount(projectData.likes_count);
       setSavesCount(projectData.saves_count || 0);
       setCommentsCount(projectData.comments_count || 0);
+      setFollowersCount(projectData.profiles?.followers_count || 0);
 
       // Check if current user has liked this project
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         const { data: likeData } = await supabase
           .from("likes")
@@ -124,8 +148,10 @@ const ProjectDetail = () => {
   };
 
   const handleLike = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       toast({
         title: "Login required",
@@ -146,18 +172,18 @@ const ProjectDetail = () => {
           .eq("project_id", project!.id);
 
         if (error) throw error;
-        
+
         setLocalLiked(false);
-        setLikesCount(prev => prev - 1);
+        setLikesCount((prev) => prev - 1);
       } else {
         const { error } = await supabase
           .from("likes")
           .insert({ user_id: user.id, project_id: project!.id });
 
         if (error) throw error;
-        
+
         setLocalLiked(true);
-        setLikesCount(prev => prev + 1);
+        setLikesCount((prev) => prev + 1);
       }
     } catch (error) {
       console.error("Error toggling like:", error);
@@ -193,7 +219,14 @@ const ProjectDetail = () => {
   };
 
   const handleSave = async () => {
-    if (!currentUser || !project) return;
+    if (!currentUser || !project) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to save projects",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -205,37 +238,49 @@ const ProjectDetail = () => {
           .eq("user_id", currentUser.id)
           .eq("project_id", project.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error unsaving project:", error);
+          throw error;
+        }
 
         setIsSaved(false);
-        setSavesCount(prev => Math.max(0, prev - 1));
+        setSavesCount((prev) => Math.max(0, prev - 1));
         toast({
           title: "Removed from saves",
           description: "Project removed from your saved items",
         });
       } else {
         // Save the project
-        const { error } = await supabase
-          .from("saves")
-          .insert({
-            user_id: currentUser.id,
-            project_id: project.id
-          });
+        const { error } = await supabase.from("saves").insert({
+          user_id: currentUser.id,
+          project_id: project.id,
+        });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error saving project:", error);
+          // Check if it's a duplicate key error
+          if (error.code === '23505') {
+            toast({
+              title: "Already saved",
+              description: "This project is already in your saved items",
+            });
+            return;
+          }
+          throw error;
+        }
 
         setIsSaved(true);
-        setSavesCount(prev => prev + 1);
+        setSavesCount((prev) => prev + 1);
         toast({
           title: "Saved",
           description: "Project added to your saved items",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling save:", error);
       toast({
         title: "Error",
-        description: "Failed to update save status",
+        description: error.message || "Failed to update save status",
         variant: "destructive",
       });
     } finally {
@@ -243,33 +288,163 @@ const ProjectDetail = () => {
     }
   };
 
+  const checkIfFollowing = async () => {
+    if (!currentUser || !project) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("followers")
+        .select("id")
+        .eq("follower_id", currentUser.id)
+        .eq("following_id", project.user_id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        // PGRST116 is "not found" error
+        console.error("Error checking follow status:", error);
+        return;
+      }
+
+      setIsFollowing(!!data);
+    } catch (error) {
+      console.error("Error checking follow status:", error);
+    }
+  };
+
+  const handleFollow = async () => {
+    if (!currentUser || !project) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to follow creators",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent following yourself
+    if (currentUser.id === project.user_id) {
+      toast({
+        title: "Cannot follow yourself",
+        description: "You cannot follow your own profile",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsFollowingLoading(true);
+
+    try {
+      if (isFollowing) {
+        // Unfollow
+        const { error } = await supabase
+          .from("followers")
+          .delete()
+          .eq("follower_id", currentUser.id)
+          .eq("following_id", project.user_id);
+
+        if (error) {
+          console.error("Error unfollowing:", error);
+          throw error;
+        }
+
+        setIsFollowing(false);
+        setFollowersCount((prev) => Math.max(0, prev - 1));
+        toast({
+          title: "Unfollowed",
+          description: `You are no longer following ${project.profiles?.full_name || project.profiles?.username}`,
+        });
+      } else {
+        // Follow
+        const { error } = await supabase.from("followers").insert({
+          follower_id: currentUser.id,
+          following_id: project.user_id,
+        });
+
+        if (error) {
+          console.error("Error following:", error);
+          // Check if it's a duplicate key error
+          if (error.code === '23505') {
+            toast({
+              title: "Already following",
+              description: "You are already following this creator",
+            });
+            return;
+          }
+          throw error;
+        }
+
+        setIsFollowing(true);
+        setFollowersCount((prev) => prev + 1);
+        toast({
+          title: "Following",
+          description: `You are now following ${project.profiles?.full_name || project.profiles?.username}`,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error updating follow status:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update follow status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsFollowingLoading(false);
+    }
+  };
+
   const handleComment = async () => {
-    if (!currentUser || !project || !newComment.trim()) return;
+    if (!currentUser || !project) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to comment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!newComment.trim()) {
+      toast({
+        title: "Empty comment",
+        description: "Please enter a comment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newComment.trim().length > 1000) {
+      toast({
+        title: "Comment too long",
+        description: "Comments must be less than 1000 characters",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setIsCommenting(true);
     try {
-      const { error } = await supabase
-        .from("comments")
-        .insert({
-          user_id: currentUser.id,
-          project_id: project.id,
-          content: newComment.trim()
-        });
+      const { error } = await supabase.from("comments").insert({
+        user_id: currentUser.id,
+        project_id: project.id,
+        content: newComment.trim(),
+      });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error adding comment:", error);
+        throw error;
+      }
 
       setNewComment("");
       loadComments();
-      setCommentsCount(prev => prev + 1);
+      setCommentsCount((prev) => prev + 1);
       toast({
         title: "Comment added",
         description: "Your comment has been posted",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding comment:", error);
       toast({
         title: "Error",
-        description: "Failed to add comment",
+        description: error.message || "Failed to add comment",
         variant: "destructive",
       });
     } finally {
@@ -283,7 +458,8 @@ const ProjectDetail = () => {
     try {
       const { data: commentsData, error } = await supabase
         .from("comments")
-        .select(`
+        .select(
+          `
           *,
           profiles:user_id (
             id,
@@ -291,15 +467,24 @@ const ProjectDetail = () => {
             full_name,
             avatar_url
           )
-        `)
+        `
+        )
         .eq("project_id", project.id)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading comments:", error);
+        throw error;
+      }
 
       setComments(commentsData || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error loading comments:", error);
+      toast({
+        title: "Error loading comments",
+        description: error.message || "Failed to load comments",
+        variant: "destructive",
+      });
     }
   };
 
@@ -307,20 +492,28 @@ const ProjectDetail = () => {
     if (!currentUser || !project) return;
 
     try {
-      const { data: saveData } = await supabase
+      const { data: saveData, error } = await supabase
         .from("saves")
         .select("id")
         .eq("user_id", currentUser.id)
         .eq("project_id", project.id)
         .single();
 
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 is "not found" error, which is expected
+        console.error("Error checking save status:", error);
+        return;
+      }
+
       setIsSaved(!!saveData);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error checking save status:", error);
+      // Don't show error toast for this as it's not critical
     }
   };
 
-  const isProjectOwner = currentUser && project && currentUser.id === project.user_id;
+  const isProjectOwner =
+    currentUser && project && currentUser.id === project.user_id;
 
   const handleDeleteImage = async () => {
     if (!project) return;
@@ -328,15 +521,15 @@ const ProjectDetail = () => {
     try {
       // Extract file path from URL
       const url = new URL(project.image_url);
-      const filePath = url.pathname.split('/').slice(3).join('/'); // Remove '/storage/v1/object/public/projects/'
+      const filePath = url.pathname.split("/").slice(3).join("/"); // Remove '/storage/v1/object/public/projects/'
 
       // Delete from storage
       const { error: storageError } = await supabase.storage
-        .from('projects')
+        .from("projects")
         .remove([filePath]);
 
       if (storageError) {
-        console.error('Storage delete error:', storageError);
+        console.error("Storage delete error:", storageError);
         toast({
           title: "Error",
           description: "Failed to delete image from storage.",
@@ -347,9 +540,9 @@ const ProjectDetail = () => {
 
       // Update project with placeholder image
       const { error: updateError } = await supabase
-        .from('projects')
-        .update({ image_url: '/placeholder.svg' })
-        .eq('id', project.id);
+        .from("projects")
+        .update({ image_url: "/placeholder.svg" })
+        .eq("id", project.id);
 
       if (updateError) {
         toast({
@@ -361,20 +554,72 @@ const ProjectDetail = () => {
       }
 
       // Update local state
-      setProject({ ...project, image_url: '/placeholder.svg' });
+      setProject({ ...project, image_url: "/placeholder.svg" });
       setIsEditMode(false);
-      
+
       toast({
         title: "Success",
         description: "Image deleted successfully.",
       });
     } catch (error) {
-      console.error('Error deleting image:', error);
+      console.error("Error deleting image:", error);
       toast({
         title: "Error",
         description: "Failed to delete image.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!project) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete the image from storage first
+      if (
+        project.image_url &&
+        !project.image_url.includes("/placeholder.svg")
+      ) {
+        const url = new URL(project.image_url);
+        const filePath = url.pathname.split("/").slice(3).join("/");
+
+        const { error: storageError } = await supabase.storage
+          .from("projects")
+          .remove([filePath]);
+
+        if (storageError) {
+          console.error("Storage delete error:", storageError);
+          // Continue with project deletion even if storage deletion fails
+        }
+      }
+
+      // Delete the project from database
+      const { error: projectError } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", project.id);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      toast({
+        title: "Success",
+        description: "Project deleted successfully.",
+      });
+
+      // Navigate back to home page
+      navigate("/");
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -387,7 +632,7 @@ const ProjectDetail = () => {
       const previousImageUrl = project.image_url;
 
       // Validate file type
-      if (!file.type.startsWith('image/')) {
+      if (!file.type.startsWith("image/")) {
         toast({
           title: "Invalid file type",
           description: "Please select an image file.",
@@ -406,27 +651,27 @@ const ProjectDetail = () => {
         return;
       }
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split(".").pop();
       const fileName = `${project.user_id}/${Date.now()}.${fileExt}`;
 
       // Upload new image
       const { data, error: uploadError } = await supabase.storage
-        .from('projects')
+        .from("projects")
         .upload(fileName, file);
 
       if (uploadError) {
         throw uploadError;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('projects')
-        .getPublicUrl(fileName);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("projects").getPublicUrl(fileName);
 
       // Update project with new image URL
       const { error: updateError } = await supabase
-        .from('projects')
+        .from("projects")
         .update({ image_url: publicUrl })
-        .eq('id', project.id);
+        .eq("id", project.id);
 
       if (updateError) {
         throw updateError;
@@ -438,18 +683,21 @@ const ProjectDetail = () => {
 
       // Best-effort: remove the old image from storage to avoid orphaned files
       try {
-        if (previousImageUrl && !previousImageUrl.endsWith('/placeholder.svg')) {
+        if (
+          previousImageUrl &&
+          !previousImageUrl.endsWith("/placeholder.svg")
+        ) {
           const prevUrl = new URL(previousImageUrl);
           // Expect: /storage/v1/object/public/projects/<path>
-          const prevPath = prevUrl.pathname.split('/').slice(5).join('/');
+          const prevPath = prevUrl.pathname.split("/").slice(5).join("/");
           // Fallback for different path structures
-          const altPrevPath = prevUrl.pathname.split('/').slice(3).join('/');
+          const altPrevPath = prevUrl.pathname.split("/").slice(3).join("/");
           const candidatePaths = [prevPath, altPrevPath].filter(Boolean);
 
           for (const p of candidatePaths) {
             if (!p) continue;
             const { error: removeError } = await supabase.storage
-              .from('projects')
+              .from("projects")
               .remove([p]);
             // If one removal path works, stop trying others
             if (!removeError) break;
@@ -457,15 +705,15 @@ const ProjectDetail = () => {
         }
       } catch (cleanupError) {
         // Non-fatal: log but don't interrupt user flow
-        console.warn('Failed to cleanup previous image:', cleanupError);
+        console.warn("Failed to cleanup previous image:", cleanupError);
       }
-      
+
       toast({
         title: "Success",
         description: "Image updated successfully!",
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error("Error uploading image:", error);
       toast({
         title: "Upload failed",
         description: "Failed to update image. Please try again.",
@@ -477,10 +725,10 @@ const ProjectDetail = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -515,7 +763,9 @@ const ProjectDetail = () => {
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-semibold text-gray-900 mb-4">Project not found</h1>
+            <h1 className="text-2xl font-semibold text-gray-900 mb-4">
+              Project not found
+            </h1>
             <Button onClick={() => navigate("/")}>Return to Home</Button>
           </div>
         </div>
@@ -526,13 +776,13 @@ const ProjectDetail = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Back Button */}
         <Button
           variant="ghost"
           onClick={() => navigate(-1)}
-          className="mb-6 hover:bg-gray-100"
+          className="mb-6 hover:bg-blue-100 hover:text-blue-600"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
@@ -544,7 +794,15 @@ const ProjectDetail = () => {
             {/* Project Media */}
             <div className="relative overflow-hidden rounded-lg bg-white shadow-sm group">
               {/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(project.image_url) ? (
-                <video src={project.image_url} className="w-full h-auto" controls autoPlay muted loop playsInline />
+                <video
+                  src={project.image_url}
+                  className="w-full h-auto"
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                />
               ) : (
                 <img
                   src={project.image_url}
@@ -552,7 +810,7 @@ const ProjectDetail = () => {
                   className="w-full h-auto object-cover"
                 />
               )}
-              
+
               {/* Edit Mode Overlay */}
               {isProjectOwner && (
                 <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
@@ -561,11 +819,12 @@ const ProjectDetail = () => {
                       size="sm"
                       variant="secondary"
                       onClick={() => {
-                        const input = document.createElement('input');
-                        input.type = 'file';
-                        input.accept = 'image/*';
+                        const input = document.createElement("input");
+                        input.type = "file";
+                        input.accept = "image/*";
                         input.onchange = (e) => {
-                          const file = (e.target as HTMLInputElement).files?.[0];
+                          const file = (e.target as HTMLInputElement)
+                            .files?.[0];
                           if (file) handleReuploadImage(file);
                         };
                         input.click();
@@ -573,9 +832,9 @@ const ProjectDetail = () => {
                       disabled={isUploading}
                     >
                       <Camera className="h-4 w-4 mr-2" />
-                      {isUploading ? 'Uploading...' : 'Re-upload'}
+                      {isUploading ? "Uploading..." : "Re-upload"}
                     </Button>
-                    
+
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -589,9 +848,12 @@ const ProjectDetail = () => {
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Project Image</AlertDialogTitle>
+                          <AlertDialogTitle>
+                            Delete Project Image
+                          </AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete this project image? This action cannot be undone.
+                            Are you sure you want to delete this project image?
+                            This action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -601,6 +863,40 @@ const ProjectDetail = () => {
                             className="bg-red-600 hover:bg-red-700"
                           >
                             Delete Image
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Delete Project Button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={isDeleting}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Project
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Project</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this entire project?
+                            This action cannot be undone and will permanently
+                            remove the project and all its data.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={handleDeleteProject}
+                            className="bg-red-600 hover:bg-red-700"
+                            disabled={isDeleting}
+                          >
+                            {isDeleting ? "Deleting..." : "Delete Project"}
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
@@ -623,7 +919,7 @@ const ProjectDetail = () => {
                     </p>
                   )}
                 </div>
-                
+
                 {/* Edit Mode Toggle */}
                 {isProjectOwner && (
                   <Button
@@ -633,7 +929,7 @@ const ProjectDetail = () => {
                     className="ml-4"
                   >
                     <Edit className="h-4 w-4 mr-2" />
-                    {isEditMode ? 'Exit Edit' : 'Edit Project'}
+                    {isEditMode ? "Exit Edit" : "Edit Project"}
                   </Button>
                 )}
               </div>
@@ -649,7 +945,10 @@ const ProjectDetail = () => {
                 {project.categories && (
                   <div className="flex items-center gap-2">
                     <Tag className="h-4 w-4 text-gray-500" />
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-600">
+                    <Badge
+                      variant="secondary"
+                      className="bg-blue-100 text-blue-600"
+                    >
                       {project.categories.name}
                     </Badge>
                   </div>
@@ -668,7 +967,8 @@ const ProjectDetail = () => {
                   <Avatar className="h-12 w-12 cursor-pointer hover:ring-2 hover:ring-primary transition-all">
                     <AvatarImage src={project.profiles?.avatar_url || ""} />
                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white">
-                      {project.profiles?.full_name?.[0] || project.profiles?.username?.[0]?.toUpperCase()}
+                      {project.profiles?.full_name?.[0] ||
+                        project.profiles?.username?.[0]?.toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                 </ProfileHoverCard>
@@ -676,7 +976,9 @@ const ProjectDetail = () => {
                   <h4 className="font-medium text-gray-900">
                     {project.profiles?.full_name || project.profiles?.username}
                   </h4>
-                  <p className="text-sm text-gray-500">@{project.profiles?.username}</p>
+                  <p className="text-sm text-gray-500">
+                    @{project.profiles?.username}
+                  </p>
                 </div>
               </div>
               <Separator className="my-4" />
@@ -701,8 +1003,12 @@ const ProjectDetail = () => {
                     disabled={isLiking}
                     className="flex-1 mr-2"
                   >
-                    <Heart className={`h-4 w-4 mr-2 ${localLiked ? 'fill-red-500 text-red-500' : ''}`} />
-                    {localLiked ? 'Liked' : 'Like'} ({likesCount})
+                    <Heart
+                      className={`h-4 w-4 mr-2 ${
+                        localLiked ? "fill-red-500 text-red-500" : ""
+                      }`}
+                    />
+                    {localLiked ? "Liked" : "Like"} ({likesCount})
                   </Button>
                   <Button
                     variant="outline"
@@ -714,42 +1020,70 @@ const ProjectDetail = () => {
                     Share
                   </Button>
                 </div>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full"
                   onClick={handleSave}
                   disabled={isSaving || !currentUser}
                 >
-                  <Bookmark className={`h-4 w-4 mr-2 ${isSaved ? 'fill-blue-500 text-blue-500' : ''}`} />
-                  {isSaved ? 'Saved' : 'Save'} ({savesCount})
+                  <Bookmark
+                    className={`h-4 w-4 mr-2 ${
+                      isSaved ? "fill-blue-500 text-blue-500" : ""
+                    }`}
+                  />
+                  {isSaved ? "Saved" : "Save"} ({savesCount})
                 </Button>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+
+                <Button
+                  variant="outline"
+                  size="sm"
                   className="w-full"
                   disabled={!currentUser}
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Comment ({commentsCount})
                 </Button>
+
+                {!isProjectOwner && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={handleFollow}
+                    disabled={isFollowingLoading || !currentUser}
+                  >
+                    {isFollowing ? (
+                      <>
+                        <UserCheck className="h-4 w-4 mr-2" />
+                        Following ({followersCount})
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Follow Creator ({followersCount})
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
             </Card>
 
             {/* Owner Actions */}
             {isProjectOwner && (
               <Card className="p-6 border-blue-200 bg-blue-50">
-                <h3 className="font-semibold text-blue-900 mb-4">Owner Actions</h3>
+                <h3 className="font-semibold text-blue-900 mb-4">
+                  Owner Actions
+                </h3>
                 <div className="space-y-3">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
                       input.onchange = (e) => {
                         const file = (e.target as HTMLInputElement).files?.[0];
                         if (file) handleReuploadImage(file);
@@ -760,9 +1094,9 @@ const ProjectDetail = () => {
                     className="w-full border-blue-300 text-blue-700 hover:bg-blue-100"
                   >
                     <Upload className="h-4 w-4 mr-2" />
-                    {isUploading ? 'Uploading...' : 'Change Project Image'}
+                    {isUploading ? "Uploading..." : "Change Project Image"}
                   </Button>
-                  
+
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button
@@ -777,9 +1111,13 @@ const ProjectDetail = () => {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Project Image</AlertDialogTitle>
+                        <AlertDialogTitle>
+                          Delete Project Image
+                        </AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to delete this project image? This action cannot be undone and will replace the image with a placeholder.
+                          Are you sure you want to delete this project image?
+                          This action cannot be undone and will replace the
+                          image with a placeholder.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -806,53 +1144,85 @@ const ProjectDetail = () => {
                     <Eye className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600">Views</span>
                   </div>
-                  <span className="font-medium text-gray-900">{project.views_count}</span>
+                  <span className="font-medium text-gray-900">
+                    {project.views_count}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Heart className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600">Likes</span>
                   </div>
-                  <span className="font-medium text-gray-900">{likesCount}</span>
+                  <span className="font-medium text-gray-900">
+                    {likesCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Bookmark className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600">Saves</span>
                   </div>
-                  <span className="font-medium text-gray-900">{savesCount}</span>
+                  <span className="font-medium text-gray-900">
+                    {savesCount}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm text-gray-600">Followers</span>
+                  </div>
+                  <span className="font-medium text-gray-900">
+                    {followersCount}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4 text-gray-500" />
                     <span className="text-sm text-gray-600">Comments</span>
                   </div>
-                  <span className="font-medium text-gray-900">{commentsCount}</span>
+                  <span className="font-medium text-gray-900">
+                    {commentsCount}
+                  </span>
                 </div>
               </div>
             </Card>
 
             {/* Comments Section */}
             <Card className="p-6">
-              <h3 className="font-semibold text-gray-900 mb-4">Comments ({commentsCount})</h3>
-              
+              <h3 className="font-semibold text-gray-900 mb-4">
+                Comments ({commentsCount})
+              </h3>
+
               {/* Add Comment Form */}
               {currentUser ? (
                 <div className="mb-6">
                   <div className="flex gap-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={currentUser.user_metadata?.avatar_url} />
+                      <AvatarImage
+                        src={currentUser.user_metadata?.avatar_url}
+                      />
                       <AvatarFallback>
-                        {currentUser.user_metadata?.full_name?.[0] || currentUser.email?.[0].toUpperCase()}
+                        {currentUser.user_metadata?.full_name?.[0] ||
+                          currentUser.email?.[0].toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <Textarea
-                        placeholder="Add a comment..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        className="min-h-[80px] resize-none"
-                      />
+                      <div className="space-y-2">
+                        <Textarea
+                          placeholder="Add a comment..."
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          className="min-h-[80px] resize-none"
+                          disabled={isCommenting}
+                          maxLength={1000}
+                        />
+                        <div className="flex justify-between items-center text-xs text-muted-foreground">
+                          <span>Share your thoughts about this project</span>
+                          <span className={newComment.length > 900 ? "text-orange-500" : ""}>
+                            {newComment.length}/1000
+                          </span>
+                        </div>
+                      </div>
                       <div className="flex justify-end mt-2">
                         <Button
                           onClick={handleComment}
@@ -867,7 +1237,7 @@ const ProjectDetail = () => {
                           ) : (
                             <>
                               <Send className="h-4 w-4 mr-2" />
-                              Post Comment
+                              {isCommenting ? "Posting..." : "Post Comment"}
                             </>
                           )}
                         </Button>
@@ -895,19 +1265,24 @@ const ProjectDetail = () => {
                       <Avatar className="h-8 w-8">
                         <AvatarImage src={comment.profiles?.avatar_url} />
                         <AvatarFallback>
-                          {comment.profiles?.full_name?.[0] || comment.profiles?.username?.[0] || "U"}
+                          {comment.profiles?.full_name?.[0] ||
+                            comment.profiles?.username?.[0] ||
+                            "U"}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="font-medium text-sm">
-                            {comment.profiles?.full_name || comment.profiles?.username}
+                            {comment.profiles?.full_name ||
+                              comment.profiles?.username}
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {new Date(comment.created_at).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-700">{comment.content}</p>
+                        <p className="text-sm text-gray-700">
+                          {comment.content}
+                        </p>
                       </div>
                     </div>
                   ))

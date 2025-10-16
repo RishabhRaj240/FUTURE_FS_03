@@ -11,7 +11,6 @@ import {
   BarChart3,
   Briefcase,
   ShoppingBag,
-  Crown,
   LogOut,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -190,16 +189,6 @@ export const ProfileHoverCard = ({
                 {profile.username}
               </p>
 
-              <Button className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg">
-                <Crown className="h-4 w-4 mr-2" />
-                Upgrade to PRO
-                <Badge
-                  variant="secondary"
-                  className="ml-2 bg-white/20 text-white border-white/30"
-                >
-                  PRO
-                </Badge>
-              </Button>
             </div>
 
             {/* Account Status Section */}

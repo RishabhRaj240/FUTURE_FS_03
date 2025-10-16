@@ -3,6 +3,7 @@ import { Database } from "@/integrations/supabase/types";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
   profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
+  categories: Database["public"]["Tables"]["categories"]["Row"] | null;
   isLiked?: boolean;
 };
 

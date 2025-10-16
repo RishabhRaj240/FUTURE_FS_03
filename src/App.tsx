@@ -14,6 +14,7 @@ import Purchases from "./pages/Purchases";
 import Settings from "./pages/Settings";
 import HirerDashboard from "./pages/HirerDashboard";
 import EditAvailability from "./pages/EditAvailability";
+import Assets from "./pages/Assets";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/settings" element={<Settings />} />
           <Route path="/hirer-dashboard" element={<HirerDashboard />} />
           <Route path="/edit-availability" element={<EditAvailability />} />
+          <Route path="/assets" element={<Assets />} />
           <Route path="/project/:id" element={<ProjectDetail />} />
           <Route path="/:username" element={<Profile />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

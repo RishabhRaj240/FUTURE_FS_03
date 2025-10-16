@@ -6,6 +6,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { ImageUpload } from "@/components/ImageUpload";
 import {
   MapPin,
@@ -22,6 +33,7 @@ import {
   MoreHorizontal,
   Camera,
   Upload,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -44,6 +56,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("work");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const hasLoadedProfile = useRef(false);
 
   const getCurrentUser = async () => {
@@ -58,7 +71,7 @@ const Profile = () => {
 
     setLoading(true);
     hasLoadedProfile.current = true;
-    
+
     try {
       // Load profile
       const { data: profileData, error: profileError } = await supabase
@@ -210,6 +223,60 @@ const Profile = () => {
   };
 
   const isOwnProfile = currentUser && profile && currentUser.id === profile.id;
+
+  const handleDeleteProject = async (projectId: string) => {
+    setIsDeleting(projectId);
+    try {
+      // Get the project to find the image URL
+      const project = projects.find((p) => p.id === projectId);
+      if (!project) return;
+
+      // Delete the image from storage first
+      if (
+        project.image_url &&
+        !project.image_url.includes("/placeholder.svg")
+      ) {
+        const url = new URL(project.image_url);
+        const filePath = url.pathname.split("/").slice(3).join("/");
+
+        const { error: storageError } = await supabase.storage
+          .from("projects")
+          .remove([filePath]);
+
+        if (storageError) {
+          console.error("Storage delete error:", storageError);
+          // Continue with project deletion even if storage deletion fails
+        }
+      }
+
+      // Delete the project from database
+      const { error: projectError } = await supabase
+        .from("projects")
+        .delete()
+        .eq("id", projectId);
+
+      if (projectError) {
+        throw projectError;
+      }
+
+      // Update local state
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+
+      toast({
+        title: "Success",
+        description: "Project deleted successfully.",
+      });
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete project.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -628,18 +695,21 @@ const Profile = () => {
 
                 <div className="flex items-center gap-2">
                   {(() => {
-                    const savedSettings = localStorage.getItem('userAvailabilitySettings');
+                    const savedSettings = localStorage.getItem(
+                      "userAvailabilitySettings"
+                    );
                     let isAvailable = true;
                     let statusText = "Available Now";
                     let statusColor = "text-green-600";
                     let dotColor = "bg-green-500";
-                    
+
                     if (savedSettings) {
                       try {
                         const parsedSettings = JSON.parse(savedSettings);
                         isAvailable = parsedSettings.isAvailable;
-                        const status = parsedSettings.availabilityStatus || "available";
-                        
+                        const status =
+                          parsedSettings.availabilityStatus || "available";
+
                         if (!isAvailable) {
                           statusText = "Not Available";
                           statusColor = "text-gray-500";
@@ -654,13 +724,18 @@ const Profile = () => {
                           dotColor = "bg-orange-500";
                         }
                       } catch (error) {
-                        console.error("Error parsing availability settings:", error);
+                        console.error(
+                          "Error parsing availability settings:",
+                          error
+                        );
                       }
                     }
-                    
+
                     return (
                       <>
-                        <div className={`h-2 w-2 ${dotColor} rounded-full`}></div>
+                        <div
+                          className={`h-2 w-2 ${dotColor} rounded-full`}
+                        ></div>
                         <span className={`text-sm font-medium ${statusColor}`}>
                           {statusText}
                         </span>
@@ -685,35 +760,21 @@ const Profile = () => {
               {isOwnProfile && (
                 <div className="space-y-3">
                   {/* Mobile Share Your Work Button - Prominent on mobile */}
-                  <Button 
+                  <Button
                     className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm sm:text-base font-semibold shadow-lg lg:hidden"
                     onClick={() => navigate("/upload")}
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     Share Your Work
                   </Button>
-                  
-                  <Button 
+
+                  <Button
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                     onClick={() => navigate("/settings")}
                   >
                     <Edit className="h-4 w-4 mr-2" />
                     <span className="hidden sm:inline">Edit Profile Info</span>
                     <span className="sm:hidden">Edit Profile</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-blue-600 text-blue-600 hover:bg-blue-50 text-sm sm:text-base"
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Customize Profile</span>
-                    <span className="sm:hidden">Customize</span>
-                    <Badge
-                      variant="secondary"
-                      className="ml-2 bg-blue-100 text-blue-600 text-xs"
-                    >
-                      PRO
-                    </Badge>
                   </Button>
                 </div>
               )}
@@ -738,7 +799,9 @@ const Profile = () => {
                         </div>
                         <CheckCircle className="h-4 w-4 text-green-500" />
                       </div>
-                      <p className="text-xs sm:text-sm text-gray-600">Availability: Now</p>
+                      <p className="text-xs sm:text-sm text-gray-600">
+                        Availability: Now
+                      </p>
                       <Button
                         size="sm"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm"
@@ -766,12 +829,27 @@ const Profile = () => {
                 >
                   Work
                 </TabsTrigger>
-                <TabsTrigger value="services" className="text-xs sm:text-sm">Services</TabsTrigger>
-                <TabsTrigger value="stock" className="text-xs sm:text-sm">Stock</TabsTrigger>
-                <TabsTrigger value="moodboards" className="text-xs sm:text-sm">Moodboards</TabsTrigger>
-                <TabsTrigger value="appreciations" className="text-xs sm:text-sm">Appreciations</TabsTrigger>
-                <TabsTrigger value="stats" className="text-xs sm:text-sm">Stats</TabsTrigger>
-                <TabsTrigger value="drafts" className="text-xs sm:text-sm">Drafts</TabsTrigger>
+                <TabsTrigger value="services" className="text-xs sm:text-sm">
+                  Services
+                </TabsTrigger>
+                <TabsTrigger value="stock" className="text-xs sm:text-sm">
+                  Stock
+                </TabsTrigger>
+                <TabsTrigger value="moodboards" className="text-xs sm:text-sm">
+                  Moodboards
+                </TabsTrigger>
+                <TabsTrigger
+                  value="appreciations"
+                  className="text-xs sm:text-sm"
+                >
+                  Appreciations
+                </TabsTrigger>
+                <TabsTrigger value="stats" className="text-xs sm:text-sm">
+                  Stats
+                </TabsTrigger>
+                <TabsTrigger value="drafts" className="text-xs sm:text-sm">
+                  Drafts
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="work" className="mt-4 sm:mt-6">
@@ -783,24 +861,12 @@ const Profile = () => {
                     {isOwnProfile && (
                       <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
                         {/* Mobile Share Your Work Button */}
-                        <Button 
+                        <Button
                           className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white text-sm font-semibold shadow-lg sm:hidden"
                           onClick={() => navigate("/upload")}
                         >
                           <Upload className="h-4 w-4 mr-2" />
                           Share Your Work
-                        </Button>
-                        
-                        {/* Desktop Add Section Button */}
-                        <Button className="bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base hidden sm:flex">
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Section
-                          <Badge
-                            variant="secondary"
-                            className="ml-2 bg-blue-100 text-blue-600 text-xs"
-                          >
-                            PRO
-                          </Badge>
                         </Button>
                       </div>
                     )}
@@ -814,7 +880,9 @@ const Profile = () => {
                           className="group cursor-pointer hover:shadow-lg transition-shadow duration-200 overflow-hidden"
                         >
                           <div className="aspect-[4/3] overflow-hidden">
-                            {/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(project.image_url) ? (
+                            {/(\.mp4|\.webm|\.mov|\.m4v)(\?|$)/i.test(
+                              project.image_url
+                            ) ? (
                               <video
                                 src={project.image_url}
                                 className="w-full h-full object-cover"
@@ -829,7 +897,7 @@ const Profile = () => {
                               <img
                                 src={project.image_url}
                                 alt={project.title}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                                className="w-full h-full object-cover"
                               />
                             )}
                           </div>
@@ -861,6 +929,49 @@ const Profile = () => {
                                 >
                                   <Share2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                 </Button>
+                                {isOwnProfile && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                        disabled={isDeleting === project.id}
+                                      >
+                                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                          Delete Project
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Are you sure you want to delete "
+                                          {project.title}"? This action cannot
+                                          be undone and will permanently remove
+                                          the project and all its data.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>
+                                          Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() =>
+                                            handleDeleteProject(project.id)
+                                          }
+                                          className="bg-red-600 hover:bg-red-700"
+                                          disabled={isDeleting === project.id}
+                                        >
+                                          {isDeleting === project.id
+                                            ? "Deleting..."
+                                            : "Delete Project"}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
                                 <Button
                                   size="sm"
                                   variant="ghost"

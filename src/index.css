@@ -100,4 +100,16 @@ All colors MUST be HSL.
     font-family: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI",
       "Roboto", sans-serif;
   }
+
+  /* Ensure images render clearly without blur */
+  img {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: auto;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
 }

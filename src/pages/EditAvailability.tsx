@@ -6,14 +6,30 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ArrowLeft,
@@ -63,7 +79,6 @@ import {
   WifiOff,
   Volume2,
   VolumeX,
-  Brightness,
   Palette,
   Image as ImageIcon,
   FileText,
@@ -85,7 +100,6 @@ import {
   Shield,
   Lock,
   Unlock,
-  User,
   UserCheck,
   UserX,
   UserPlus,
@@ -99,7 +113,6 @@ import {
   Hash,
   AtSign,
   Link,
-  LinkExternal,
   Bookmark,
   BookmarkCheck,
   Share2,
@@ -108,17 +121,14 @@ import {
   Forward,
   Archive,
   Inbox,
-  Outbox,
   Trash,
   RefreshCw,
   RotateCcw,
   Play,
   Pause,
-  Stop,
   SkipBack,
   SkipForward,
   Volume1,
-  Volume3,
   Maximize,
   Minimize,
   Move,
@@ -141,7 +151,6 @@ import {
   Quote,
   Code,
   Terminal,
-  Database,
   Server,
   Cloud,
   CloudOff,
@@ -153,20 +162,16 @@ import {
   Droplets,
   Flame,
   Snowflake,
-  Sun,
-  Moon,
   Sunrise,
   Sunset,
   Compass,
   Navigation,
   Map,
-  MapPin as MapPinIcon,
   Building,
   Building2,
   Home,
   Factory,
   Store,
-  Bank,
   School,
   Hospital,
   Church,
@@ -177,17 +182,11 @@ import {
   Plane,
   Ship,
   Bike,
-  Scooter,
   Truck,
-  Motorcycle,
   Rocket,
   Satellite,
   Telescope,
   Microscope,
-  Camera as CameraIcon,
-  Video as VideoIcon,
-  Mic as MicIcon,
-  Headphones as HeadphonesIcon,
   Speaker,
   Radio,
   Tv,
@@ -196,22 +195,13 @@ import {
   Keyboard,
   Mouse,
   Printer,
-  Scanner,
-  Fax,
   HardDrive,
   Cpu,
   MemoryStick,
-  Smartphone as SmartphoneIcon,
-  Tablet as TabletIcon,
-  Laptop as LaptopIcon,
-  Monitor as MonitorIcon,
   Watch,
-  Clock as ClockIcon,
   Timer,
-  Stopwatch,
   AlarmClock,
   Hourglass,
-  Calendar as CalendarIcon2,
   CalendarDays,
   CalendarCheck,
   CalendarX,
@@ -220,11 +210,9 @@ import {
   CalendarRange,
   CalendarSearch,
   CalendarHeart,
-  CalendarStar,
-  Calendar as CalendarIcon3,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User as SupabaseUser } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
@@ -272,7 +260,7 @@ interface AvailabilitySettings {
 const EditAvailability = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -310,14 +298,37 @@ const EditAvailability = () => {
     vacationMode: false,
     vacationStart: "",
     vacationEnd: "",
-    vacationMessage: "I'm currently on vacation and will respond when I return.",
+    vacationMessage:
+      "I'm currently on vacation and will respond when I return.",
   });
 
   const timezones = [
-    "UTC", "EST", "PST", "CST", "MST", "GMT", "CET", "EET", "JST", "IST", "AEST", "NZST"
+    "UTC",
+    "EST",
+    "PST",
+    "CST",
+    "MST",
+    "GMT",
+    "CET",
+    "EET",
+    "JST",
+    "IST",
+    "AEST",
+    "NZST",
   ];
 
-  const currencies = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "INR", "BRL", "CHF", "SEK"];
+  const currencies = [
+    "USD",
+    "EUR",
+    "GBP",
+    "CAD",
+    "AUD",
+    "JPY",
+    "INR",
+    "BRL",
+    "CHF",
+    "SEK",
+  ];
 
   const responseTimes = [
     { value: "within-1-hour", label: "Within 1 hour" },
@@ -327,41 +338,113 @@ const EditAvailability = () => {
     { value: "within-1-week", label: "Within 1 week" },
   ];
 
-  const communicationMethods = ["email", "phone", "video-call", "messaging", "in-person"];
+  const communicationMethods = [
+    "email",
+    "phone",
+    "video-call",
+    "messaging",
+    "in-person",
+  ];
 
   const projectTypeOptions = [
-    "Web Design", "Mobile App", "Branding", "UI/UX", "Graphic Design", "Illustration",
-    "Photography", "Video Production", "3D Modeling", "Animation", "Copywriting", "Marketing",
-    "Development", "Consulting", "Training", "Research", "Writing", "Translation"
+    "Web Design",
+    "Mobile App",
+    "Branding",
+    "UI/UX",
+    "Graphic Design",
+    "Illustration",
+    "Photography",
+    "Video Production",
+    "3D Modeling",
+    "Animation",
+    "Copywriting",
+    "Marketing",
+    "Development",
+    "Consulting",
+    "Training",
+    "Research",
+    "Writing",
+    "Translation",
   ];
 
   const skillOptions = [
-    "React", "Vue.js", "Angular", "Node.js", "Python", "JavaScript", "TypeScript",
-    "Figma", "Adobe XD", "Sketch", "Photoshop", "Illustrator", "After Effects",
-    "UI/UX Design", "Web Design", "Mobile Design", "Branding", "Logo Design",
-    "Photography", "Videography", "3D Modeling", "Animation", "Copywriting",
-    "Marketing", "SEO", "Content Writing", "Translation", "Research"
+    "React",
+    "Vue.js",
+    "Angular",
+    "Node.js",
+    "Python",
+    "JavaScript",
+    "TypeScript",
+    "Figma",
+    "Adobe XD",
+    "Sketch",
+    "Photoshop",
+    "Illustrator",
+    "After Effects",
+    "UI/UX Design",
+    "Web Design",
+    "Mobile Design",
+    "Branding",
+    "Logo Design",
+    "Photography",
+    "Videography",
+    "3D Modeling",
+    "Animation",
+    "Copywriting",
+    "Marketing",
+    "SEO",
+    "Content Writing",
+    "Translation",
+    "Research",
   ];
 
   const serviceOptions = [
-    "Web Development", "Mobile App Development", "UI/UX Design", "Graphic Design",
-    "Brand Identity", "Logo Design", "Photography", "Video Editing", "3D Animation",
-    "Content Writing", "Marketing Strategy", "SEO Optimization", "Social Media Management",
-    "E-commerce Development", "WordPress Development", "Consulting", "Training"
+    "Web Development",
+    "Mobile App Development",
+    "UI/UX Design",
+    "Graphic Design",
+    "Brand Identity",
+    "Logo Design",
+    "Photography",
+    "Video Editing",
+    "3D Animation",
+    "Content Writing",
+    "Marketing Strategy",
+    "SEO Optimization",
+    "Social Media Management",
+    "E-commerce Development",
+    "WordPress Development",
+    "Consulting",
+    "Training",
   ];
 
   const languageOptions = [
-    "English", "Spanish", "French", "German", "Italian", "Portuguese", "Russian",
-    "Chinese", "Japanese", "Korean", "Arabic", "Hindi", "Dutch", "Swedish", "Norwegian"
+    "English",
+    "Spanish",
+    "French",
+    "German",
+    "Italian",
+    "Portuguese",
+    "Russian",
+    "Chinese",
+    "Japanese",
+    "Korean",
+    "Arabic",
+    "Hindi",
+    "Dutch",
+    "Swedish",
+    "Norwegian",
   ];
 
   useEffect(() => {
     loadUserData();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadUserData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         setUser(user);
         const { data: profileData } = await supabase
@@ -369,25 +452,30 @@ const EditAvailability = () => {
           .select("*")
           .eq("id", user.id)
           .single();
-        
+
         if (profileData) {
           setProfile(profileData);
-          
+
           // Load availability settings from localStorage if available
-          const savedSettings = localStorage.getItem('userAvailabilitySettings');
+          const savedSettings = localStorage.getItem(
+            "userAvailabilitySettings"
+          );
           if (savedSettings) {
             try {
               const parsedSettings = JSON.parse(savedSettings);
-              setAvailability(prev => ({
+              setAvailability((prev) => ({
                 ...prev,
                 ...parsedSettings,
                 bio: profileData.bio || prev.bio,
                 location: profileData.location || prev.location,
               }));
             } catch (error) {
-              console.error("Error parsing saved availability settings:", error);
+              console.error(
+                "Error parsing saved availability settings:",
+                error
+              );
               // Fall back to defaults
-              setAvailability(prev => ({
+              setAvailability((prev) => ({
                 ...prev,
                 bio: profileData.bio || prev.bio,
                 location: profileData.location || prev.location,
@@ -395,14 +483,14 @@ const EditAvailability = () => {
             }
           } else {
             // Load basic settings from profile data
-            setAvailability(prev => ({
+            setAvailability((prev) => ({
               ...prev,
               bio: profileData.bio || prev.bio,
               location: profileData.location || prev.location,
             }));
           }
         }
-        
+
         setLoading(false);
       } else {
         navigate("/auth");
@@ -419,7 +507,7 @@ const EditAvailability = () => {
   };
 
   const updateAvailability = (updates: Partial<AvailabilitySettings>) => {
-    setAvailability(prev => ({ ...prev, ...updates }));
+    setAvailability((prev) => ({ ...prev, ...updates }));
     setHasUnsavedChanges(true);
   };
 
@@ -434,7 +522,7 @@ const EditAvailability = () => {
     }
 
     setSaving(true);
-    
+
     try {
       // Store all settings in localStorage (this is our primary storage method)
       const settingsToSave = {
@@ -463,16 +551,19 @@ const EditAvailability = () => {
         location: availability.location,
         savedAt: new Date().toISOString(),
       };
-      
+
       // Save to localStorage
-      localStorage.setItem('userAvailabilitySettings', JSON.stringify(settingsToSave));
+      localStorage.setItem(
+        "userAvailabilitySettings",
+        JSON.stringify(settingsToSave)
+      );
       console.log("✅ Settings saved to localStorage successfully");
 
       // Attempt database update (optional - won't fail the operation if it doesn't work)
       let dbUpdateSuccess = false;
       try {
-        const updateData: any = {};
-        
+        const updateData: Partial<Profile> = {};
+
         // Only add fields that we know exist in the current schema
         if (availability.bio !== undefined) {
           updateData.bio = availability.bio || null;
@@ -480,42 +571,52 @@ const EditAvailability = () => {
         if (availability.location !== undefined) {
           updateData.location = availability.location || null;
         }
-        
+
         // Only attempt database update if we have fields to update
         if (Object.keys(updateData).length > 0) {
           console.log("🔄 Attempting database update with:", updateData);
-          
+
           const { error } = await supabase
             .from("profiles")
             .update(updateData)
             .eq("id", user.id);
 
           if (error) {
-            console.warn("⚠️ Database update failed (but localStorage save succeeded):", error);
+            console.warn(
+              "⚠️ Database update failed (but localStorage save succeeded):",
+              error
+            );
             dbUpdateSuccess = false;
           } else {
             console.log("✅ Database update successful");
             dbUpdateSuccess = true;
-            
+
             // Update local profile state
-            setProfile(prev => prev ? {
-              ...prev,
-              ...updateData,
-            } : null);
+            setProfile((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    ...updateData,
+                  }
+                : null
+            );
           }
         }
       } catch (dbError) {
-        console.warn("⚠️ Database update error (but localStorage save succeeded):", dbError);
+        console.warn(
+          "⚠️ Database update error (but localStorage save succeeded):",
+          dbError
+        );
         dbUpdateSuccess = false;
       }
-      
+
       setHasUnsavedChanges(false);
-      
+
       // Show success message
-      const successMessage = dbUpdateSuccess 
+      const successMessage = dbUpdateSuccess
         ? "Your availability settings have been saved successfully!"
         : "Your availability settings have been saved! (Stored locally - database will be updated soon)";
-        
+
       toast({
         title: "Success",
         description: successMessage,
@@ -525,7 +626,6 @@ const EditAvailability = () => {
       setTimeout(() => {
         navigate(`/${profile.username}`);
       }, 1000);
-
     } catch (error) {
       console.error("❌ Error saving availability:", error);
       toast({
@@ -538,61 +638,65 @@ const EditAvailability = () => {
     }
   };
 
-  const updateWorkSchedule = (day: keyof typeof availability.workSchedule, field: 'enabled' | 'start' | 'end', value: any) => {
-    setAvailability(prev => ({
+  const updateWorkSchedule = (
+    day: keyof typeof availability.workSchedule,
+    field: "enabled" | "start" | "end",
+    value: boolean | string
+  ) => {
+    setAvailability((prev) => ({
       ...prev,
       workSchedule: {
         ...prev.workSchedule,
         [day]: {
           ...prev.workSchedule[day],
-          [field]: value
-        }
-      }
+          [field]: value,
+        },
+      },
     }));
   };
 
   const toggleSkill = (skill: string) => {
-    setAvailability(prev => ({
+    setAvailability((prev) => ({
       ...prev,
       skills: prev.skills.includes(skill)
-        ? prev.skills.filter(s => s !== skill)
-        : [...prev.skills, skill]
+        ? prev.skills.filter((s) => s !== skill)
+        : [...prev.skills, skill],
     }));
   };
 
   const toggleService = (service: string) => {
-    setAvailability(prev => ({
+    setAvailability((prev) => ({
       ...prev,
       services: prev.services.includes(service)
-        ? prev.services.filter(s => s !== service)
-        : [...prev.services, service]
+        ? prev.services.filter((s) => s !== service)
+        : [...prev.services, service],
     }));
   };
 
   const toggleLanguage = (language: string) => {
-    setAvailability(prev => ({
+    setAvailability((prev) => ({
       ...prev,
       languages: prev.languages.includes(language)
-        ? prev.languages.filter(l => l !== language)
-        : [...prev.languages, language]
+        ? prev.languages.filter((l) => l !== language)
+        : [...prev.languages, language],
     }));
   };
 
   const toggleCommunicationMethod = (method: string) => {
-    setAvailability(prev => ({
+    setAvailability((prev) => ({
       ...prev,
       preferredCommunication: prev.preferredCommunication.includes(method)
-        ? prev.preferredCommunication.filter(m => m !== method)
-        : [...prev.preferredCommunication, method]
+        ? prev.preferredCommunication.filter((m) => m !== method)
+        : [...prev.preferredCommunication, method],
     }));
   };
 
   const toggleProjectType = (type: string) => {
-    setAvailability(prev => ({
+    setAvailability((prev) => ({
       ...prev,
       projectTypes: prev.projectTypes.includes(type)
-        ? prev.projectTypes.filter(t => t !== type)
-        : [...prev.projectTypes, type]
+        ? prev.projectTypes.filter((t) => t !== type)
+        : [...prev.projectTypes, type],
     }));
   };
 
@@ -618,7 +722,7 @@ const EditAvailability = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
@@ -631,15 +735,23 @@ const EditAvailability = () => {
             Back to Profile
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Edit My Availability</h1>
-            <p className="text-gray-600">Manage your availability, rates, and work preferences</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Edit My Availability
+            </h1>
+            <p className="text-gray-600">
+              Manage your availability, rates, and work preferences
+            </p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="w-full"
+            >
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="schedule">Schedule</TabsTrigger>
@@ -661,12 +773,18 @@ const EditAvailability = () => {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label className="text-base font-medium">Available for Work</Label>
-                          <p className="text-sm text-gray-600">Show that you're open to new projects</p>
+                          <Label className="text-base font-medium">
+                            Available for Work
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Show that you're open to new projects
+                          </p>
                         </div>
                         <Switch
                           checked={availability.isAvailable}
-                          onCheckedChange={(checked) => updateAvailability({ isAvailable: checked })}
+                          onCheckedChange={(checked) =>
+                            updateAvailability({ isAvailable: checked })
+                          }
                         />
                       </div>
 
@@ -675,7 +793,11 @@ const EditAvailability = () => {
                           <Label>Status</Label>
                           <Select
                             value={availability.availabilityStatus}
-                            onValueChange={(value: any) => updateAvailability({ availabilityStatus: value })}
+                            onValueChange={(
+                              value: "available" | "busy" | "away" | "invisible"
+                            ) =>
+                              updateAvailability({ availabilityStatus: value })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -713,7 +835,9 @@ const EditAvailability = () => {
                           <Label>Response Time</Label>
                           <Select
                             value={availability.responseTime}
-                            onValueChange={(value) => updateAvailability({ responseTime: value })}
+                            onValueChange={(value) =>
+                              updateAvailability({ responseTime: value })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -748,18 +872,26 @@ const EditAvailability = () => {
                             min="0"
                             step="0.01"
                             value={availability.hourlyRate}
-                            onChange={(e) => updateAvailability({ hourlyRate: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateAvailability({
+                                hourlyRate: Number(e.target.value),
+                              })
+                            }
                             placeholder="50"
                           />
                           {availability.hourlyRate <= 0 && (
-                            <p className="text-xs text-red-500">Please enter a valid hourly rate</p>
+                            <p className="text-xs text-red-500">
+                              Please enter a valid hourly rate
+                            </p>
                           )}
                         </div>
                         <div className="space-y-2">
                           <Label>Currency</Label>
                           <Select
                             value={availability.currency}
-                            onValueChange={(value) => updateAvailability({ currency: value })}
+                            onValueChange={(value) =>
+                              updateAvailability({ currency: value })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -777,7 +909,9 @@ const EditAvailability = () => {
                           <Label>Timezone</Label>
                           <Select
                             value={availability.timezone}
-                            onValueChange={(value) => updateAvailability({ timezone: value })}
+                            onValueChange={(value) =>
+                              updateAvailability({ timezone: value })
+                            }
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -799,7 +933,9 @@ const EditAvailability = () => {
                           <Input
                             placeholder="e.g., New York, NY"
                             value={availability.location}
-                            onChange={(e) => updateAvailability({ location: e.target.value })}
+                            onChange={(e) =>
+                              updateAvailability({ location: e.target.value })
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -809,7 +945,11 @@ const EditAvailability = () => {
                             min="1"
                             max="10"
                             value={availability.maxProjects}
-                            onChange={(e) => updateAvailability({ maxProjects: Number(e.target.value) })}
+                            onChange={(e) =>
+                              updateAvailability({
+                                maxProjects: Number(e.target.value),
+                              })
+                            }
                           />
                         </div>
                       </div>
@@ -820,7 +960,9 @@ const EditAvailability = () => {
                           placeholder="Tell clients about yourself and your expertise..."
                           rows={4}
                           value={availability.bio}
-                          onChange={(e) => updateAvailability({ bio: e.target.value })}
+                          onChange={(e) =>
+                            updateAvailability({ bio: e.target.value })
+                          }
                         />
                       </div>
                     </CardContent>
@@ -841,10 +983,15 @@ const EditAvailability = () => {
                           <Input
                             type="number"
                             value={availability.budgetRange.min}
-                            onChange={(e) => setAvailability(prev => ({
-                              ...prev,
-                              budgetRange: { ...prev.budgetRange, min: Number(e.target.value) }
-                            }))}
+                            onChange={(e) =>
+                              setAvailability((prev) => ({
+                                ...prev,
+                                budgetRange: {
+                                  ...prev.budgetRange,
+                                  min: Number(e.target.value),
+                                },
+                              }))
+                            }
                           />
                         </div>
                         <div className="space-y-2">
@@ -852,10 +999,15 @@ const EditAvailability = () => {
                           <Input
                             type="number"
                             value={availability.budgetRange.max}
-                            onChange={(e) => setAvailability(prev => ({
-                              ...prev,
-                              budgetRange: { ...prev.budgetRange, max: Number(e.target.value) }
-                            }))}
+                            onChange={(e) =>
+                              setAvailability((prev) => ({
+                                ...prev,
+                                budgetRange: {
+                                  ...prev.budgetRange,
+                                  max: Number(e.target.value),
+                                },
+                              }))
+                            }
                           />
                         </div>
                       </div>
@@ -871,39 +1023,66 @@ const EditAvailability = () => {
                       <CalendarIcon className="h-5 w-5" />
                       Work Schedule
                     </CardTitle>
-                    <p className="text-sm text-gray-600">Set your working hours for each day of the week</p>
+                    <p className="text-sm text-gray-600">
+                      Set your working hours for each day of the week
+                    </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {Object.entries(availability.workSchedule).map(([day, schedule]) => (
-                      <div key={day} className="flex items-center gap-4 p-4 border rounded-lg">
-                        <div className="w-20">
-                          <Label className="capitalize font-medium">{day}</Label>
+                    {Object.entries(availability.workSchedule).map(
+                      ([day, schedule]) => (
+                        <div
+                          key={day}
+                          className="flex items-center gap-4 p-4 border rounded-lg"
+                        >
+                          <div className="w-20">
+                            <Label className="capitalize font-medium">
+                              {day}
+                            </Label>
+                          </div>
+                          <Switch
+                            checked={schedule.enabled}
+                            onCheckedChange={(checked) =>
+                              updateWorkSchedule(
+                                day as keyof typeof availability.workSchedule,
+                                "enabled",
+                                checked
+                              )
+                            }
+                          />
+                          {schedule.enabled && (
+                            <>
+                              <div className="flex-1 flex items-center gap-2">
+                                <Input
+                                  type="time"
+                                  value={schedule.start}
+                                  onChange={(e) =>
+                                    updateWorkSchedule(
+                                      day as keyof typeof availability.workSchedule,
+                                      "start",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-32"
+                                />
+                                <span className="text-gray-500">to</span>
+                                <Input
+                                  type="time"
+                                  value={schedule.end}
+                                  onChange={(e) =>
+                                    updateWorkSchedule(
+                                      day as keyof typeof availability.workSchedule,
+                                      "end",
+                                      e.target.value
+                                    )
+                                  }
+                                  className="w-32"
+                                />
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <Switch
-                          checked={schedule.enabled}
-                          onCheckedChange={(checked) => updateWorkSchedule(day as keyof typeof availability.workSchedule, 'enabled', checked)}
-                        />
-                        {schedule.enabled && (
-                          <>
-                            <div className="flex-1 flex items-center gap-2">
-                              <Input
-                                type="time"
-                                value={schedule.start}
-                                onChange={(e) => updateWorkSchedule(day as keyof typeof availability.workSchedule, 'start', e.target.value)}
-                                className="w-32"
-                              />
-                              <span className="text-gray-500">to</span>
-                              <Input
-                                type="time"
-                                value={schedule.end}
-                                onChange={(e) => updateWorkSchedule(day as keyof typeof availability.workSchedule, 'end', e.target.value)}
-                                className="w-32"
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    ))}
+                      )
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -923,7 +1102,11 @@ const EditAvailability = () => {
                         {skillOptions.map((skill) => (
                           <Badge
                             key={skill}
-                            variant={availability.skills.includes(skill) ? "default" : "outline"}
+                            variant={
+                              availability.skills.includes(skill)
+                                ? "default"
+                                : "outline"
+                            }
                             className="cursor-pointer hover:bg-blue-100"
                             onClick={() => toggleSkill(skill)}
                           >
@@ -947,7 +1130,11 @@ const EditAvailability = () => {
                         {serviceOptions.map((service) => (
                           <Badge
                             key={service}
-                            variant={availability.services.includes(service) ? "default" : "outline"}
+                            variant={
+                              availability.services.includes(service)
+                                ? "default"
+                                : "outline"
+                            }
                             className="cursor-pointer hover:bg-green-100"
                             onClick={() => toggleService(service)}
                           >
@@ -971,7 +1158,11 @@ const EditAvailability = () => {
                         {languageOptions.map((language) => (
                           <Badge
                             key={language}
-                            variant={availability.languages.includes(language) ? "default" : "outline"}
+                            variant={
+                              availability.languages.includes(language)
+                                ? "default"
+                                : "outline"
+                            }
                             className="cursor-pointer hover:bg-purple-100"
                             onClick={() => toggleLanguage(language)}
                           >
@@ -999,7 +1190,13 @@ const EditAvailability = () => {
                         {communicationMethods.map((method) => (
                           <Badge
                             key={method}
-                            variant={availability.preferredCommunication.includes(method) ? "default" : "outline"}
+                            variant={
+                              availability.preferredCommunication.includes(
+                                method
+                              )
+                                ? "default"
+                                : "outline"
+                            }
                             className="cursor-pointer hover:bg-blue-100"
                             onClick={() => toggleCommunicationMethod(method)}
                           >
@@ -1023,7 +1220,11 @@ const EditAvailability = () => {
                         {projectTypeOptions.map((type) => (
                           <Badge
                             key={type}
-                            variant={availability.projectTypes.includes(type) ? "default" : "outline"}
+                            variant={
+                              availability.projectTypes.includes(type)
+                                ? "default"
+                                : "outline"
+                            }
                             className="cursor-pointer hover:bg-green-100"
                             onClick={() => toggleProjectType(type)}
                           >
@@ -1047,7 +1248,12 @@ const EditAvailability = () => {
                         placeholder="Any additional information about your availability or work preferences..."
                         rows={4}
                         value={availability.availabilityNotes}
-                        onChange={(e) => setAvailability(prev => ({ ...prev, availabilityNotes: e.target.value }))}
+                        onChange={(e) =>
+                          setAvailability((prev) => ({
+                            ...prev,
+                            availabilityNotes: e.target.value,
+                          }))
+                        }
                       />
                     </CardContent>
                   </Card>
@@ -1067,12 +1273,21 @@ const EditAvailability = () => {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label className="text-base font-medium">Enable Auto Reply</Label>
-                          <p className="text-sm text-gray-600">Automatically respond to new messages</p>
+                          <Label className="text-base font-medium">
+                            Enable Auto Reply
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Automatically respond to new messages
+                          </p>
                         </div>
                         <Switch
                           checked={availability.autoReply}
-                          onCheckedChange={(checked) => setAvailability(prev => ({ ...prev, autoReply: checked }))}
+                          onCheckedChange={(checked) =>
+                            setAvailability((prev) => ({
+                              ...prev,
+                              autoReply: checked,
+                            }))
+                          }
                         />
                       </div>
 
@@ -1083,7 +1298,12 @@ const EditAvailability = () => {
                             placeholder="Enter your auto reply message..."
                             rows={3}
                             value={availability.autoReplyMessage}
-                            onChange={(e) => setAvailability(prev => ({ ...prev, autoReplyMessage: e.target.value }))}
+                            onChange={(e) =>
+                              setAvailability((prev) => ({
+                                ...prev,
+                                autoReplyMessage: e.target.value,
+                              }))
+                            }
                           />
                         </div>
                       )}
@@ -1101,12 +1321,21 @@ const EditAvailability = () => {
                     <CardContent className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label className="text-base font-medium">Enable Vacation Mode</Label>
-                          <p className="text-sm text-gray-600">Automatically handle messages while away</p>
+                          <Label className="text-base font-medium">
+                            Enable Vacation Mode
+                          </Label>
+                          <p className="text-sm text-gray-600">
+                            Automatically handle messages while away
+                          </p>
                         </div>
                         <Switch
                           checked={availability.vacationMode}
-                          onCheckedChange={(checked) => setAvailability(prev => ({ ...prev, vacationMode: checked }))}
+                          onCheckedChange={(checked) =>
+                            setAvailability((prev) => ({
+                              ...prev,
+                              vacationMode: checked,
+                            }))
+                          }
                         />
                       </div>
 
@@ -1117,7 +1346,12 @@ const EditAvailability = () => {
                             <Input
                               type="date"
                               value={availability.vacationStart}
-                              onChange={(e) => setAvailability(prev => ({ ...prev, vacationStart: e.target.value }))}
+                              onChange={(e) =>
+                                setAvailability((prev) => ({
+                                  ...prev,
+                                  vacationStart: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                           <div className="space-y-2">
@@ -1125,7 +1359,12 @@ const EditAvailability = () => {
                             <Input
                               type="date"
                               value={availability.vacationEnd}
-                              onChange={(e) => setAvailability(prev => ({ ...prev, vacationEnd: e.target.value }))}
+                              onChange={(e) =>
+                                setAvailability((prev) => ({
+                                  ...prev,
+                                  vacationEnd: e.target.value,
+                                }))
+                              }
                             />
                           </div>
                         </div>
@@ -1138,7 +1377,12 @@ const EditAvailability = () => {
                             placeholder="Enter your vacation message..."
                             rows={3}
                             value={availability.vacationMessage}
-                            onChange={(e) => setAvailability(prev => ({ ...prev, vacationMessage: e.target.value }))}
+                            onChange={(e) =>
+                              setAvailability((prev) => ({
+                                ...prev,
+                                vacationMessage: e.target.value,
+                              }))
+                            }
                           />
                         </div>
                       )}
@@ -1185,18 +1429,25 @@ const EditAvailability = () => {
                 >
                   Cancel
                 </Button>
-                
+
                 {/* Debug button - remove in production */}
                 <Button
                   variant="outline"
                   className="w-full text-xs"
                   onClick={() => {
-                    const settings = localStorage.getItem('userAvailabilitySettings');
+                    const settings = localStorage.getItem(
+                      "userAvailabilitySettings"
+                    );
                     if (settings) {
-                      console.log("Current localStorage settings:", JSON.parse(settings));
+                      console.log(
+                        "Current localStorage settings:",
+                        JSON.parse(settings)
+                      );
                       toast({
                         title: "Debug Info",
-                        description: `Settings saved at: ${JSON.parse(settings).savedAt || 'Unknown'}`,
+                        description: `Settings saved at: ${
+                          JSON.parse(settings).savedAt || "Unknown"
+                        }`,
                       });
                     } else {
                       toast({
@@ -1221,22 +1472,45 @@ const EditAvailability = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className={`h-3 w-3 rounded-full ${
-                    availability.isAvailable && availability.availabilityStatus === 'available' ? 'bg-green-500' : 
-                    availability.availabilityStatus === 'busy' ? 'bg-yellow-500' :
-                    availability.availabilityStatus === 'away' ? 'bg-orange-500' : 'bg-gray-400'
-                  }`}></div>
+                  <div
+                    className={`h-3 w-3 rounded-full ${
+                      availability.isAvailable &&
+                      availability.availabilityStatus === "available"
+                        ? "bg-green-500"
+                        : availability.availabilityStatus === "busy"
+                        ? "bg-yellow-500"
+                        : availability.availabilityStatus === "away"
+                        ? "bg-orange-500"
+                        : "bg-gray-400"
+                    }`}
+                  ></div>
                   <span className="text-sm font-medium">
-                    {availability.isAvailable ? 
-                      availability.availabilityStatus.charAt(0).toUpperCase() + availability.availabilityStatus.slice(1).replace('-', ' ') :
-                      'Not Available'
-                    }
+                    {availability.isAvailable
+                      ? availability.availabilityStatus
+                          .charAt(0)
+                          .toUpperCase() +
+                        availability.availabilityStatus
+                          .slice(1)
+                          .replace("-", " ")
+                      : "Not Available"}
                   </span>
                 </div>
                 <div className="text-sm text-gray-600">
-                  <p>Rate: ${availability.hourlyRate}/hour {availability.currency}</p>
-                  <p>Response: {responseTimes.find(t => t.value === availability.responseTime)?.label}</p>
-                  {availability.location && <p>Location: {availability.location}</p>}
+                  <p>
+                    Rate: ${availability.hourlyRate}/hour{" "}
+                    {availability.currency}
+                  </p>
+                  <p>
+                    Response:{" "}
+                    {
+                      responseTimes.find(
+                        (t) => t.value === availability.responseTime
+                      )?.label
+                    }
+                  </p>
+                  {availability.location && (
+                    <p>Location: {availability.location}</p>
+                  )}
                   <p>Max Projects: {availability.maxProjects}</p>
                 </div>
               </CardContent>
@@ -1253,30 +1527,44 @@ const EditAvailability = () => {
               <CardContent className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Skills:</span>
-                  <span className="font-medium">{availability.skills.length}</span>
+                  <span className="font-medium">
+                    {availability.skills.length}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Services:</span>
-                  <span className="font-medium">{availability.services.length}</span>
+                  <span className="font-medium">
+                    {availability.services.length}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Languages:</span>
-                  <span className="font-medium">{availability.languages.length}</span>
+                  <span className="font-medium">
+                    {availability.languages.length}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Max Projects:</span>
-                  <span className="font-medium">{availability.maxProjects}</span>
+                  <span className="font-medium">
+                    {availability.maxProjects}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Hourly Rate:</span>
-                  <span className="font-medium">${availability.hourlyRate}</span>
+                  <span className="font-medium">
+                    ${availability.hourlyRate}
+                  </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Status:</span>
-                  <span className={`font-medium ${
-                    availability.isAvailable ? 'text-green-600' : 'text-gray-500'
-                  }`}>
-                    {availability.isAvailable ? 'Available' : 'Not Available'}
+                  <span
+                    className={`font-medium ${
+                      availability.isAvailable
+                        ? "text-green-600"
+                        : "text-gray-500"
+                    }`}
+                  >
+                    {availability.isAvailable ? "Available" : "Not Available"}
                   </span>
                 </div>
               </CardContent>
