@@ -5,11 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export default function Auth() {
   const [searchParams] = useSearchParams();
-  const [isSignUp, setIsSignUp] = useState(searchParams.get("mode") === "signup");
+  const [isSignUp, setIsSignUp] = useState(
+    searchParams.get("mode") === "signup"
+  );
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -32,6 +40,18 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
+        // Validate required fields
+        if (!email || !password) {
+          throw new Error("Email and password are required");
+        }
+
+        if (password.length < 6) {
+          throw new Error("Password must be at least 6 characters long");
+        }
+
+        if (username && username.length < 3) {
+          throw new Error("Username must be at least 3 characters long");
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -46,9 +66,40 @@ export default function Auth() {
 
         if (error) throw error;
 
+        // Wait a moment for the trigger to create the profile
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        // Check if profile was created, if not create it manually
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", user.id)
+            .single();
+
+          if (!existingProfile) {
+            // Create profile manually if trigger failed
+            const { error: profileError } = await supabase
+              .from("profiles")
+              .insert({
+                id: user.id,
+                username: username || email.split("@")[0],
+                full_name: fullName,
+              });
+
+            if (profileError) {
+              console.warn("Failed to create profile manually:", profileError);
+            }
+          }
+        }
+
         toast({
           title: "Success!",
-          description: "Account created successfully. Please check your email to verify.",
+          description:
+            "Account created successfully. Please check your email to verify.",
         });
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -65,9 +116,25 @@ export default function Auth() {
         navigate("/");
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
+
+      // Provide more specific error messages
+      let errorMessage = error.message;
+      if (error.message.includes("Database error")) {
+        errorMessage =
+          "There was an issue creating your profile. Please try again.";
+      } else if (error.message.includes("duplicate key")) {
+        errorMessage =
+          "Username already exists. Please choose a different username.";
+      } else if (error.message.includes("email")) {
+        errorMessage = "Invalid email address. Please check your email format.";
+      } else if (error.message.includes("password")) {
+        errorMessage = "Password must be at least 6 characters long.";
+      }
+
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
