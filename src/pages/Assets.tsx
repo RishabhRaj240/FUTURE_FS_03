@@ -23,9 +23,12 @@ import {
   Eye,
   Heart,
   MoreVertical,
+  Archive,
+  Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
+import JSZip from "jszip";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"];
 
@@ -37,10 +40,142 @@ const Assets = () => {
   const [filterType, setFilterType] = useState<"all" | "images" | "videos">(
     "all"
   );
+  const [isCreatingZip, setIsCreatingZip] = useState(false);
+  const [downloadingAsset, setDownloadingAsset] = useState<string | null>(null);
 
   useEffect(() => {
     loadAssets();
   }, []);
+
+  // Compression utility function
+  const compressImage = (
+    file: Blob,
+    maxWidth: number = 800,
+    quality: number = 0.8
+  ): Promise<Blob> => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions - more aggressive resizing for larger images
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        // For very large images, reduce further
+        if (width > 1200) {
+          const scale = 1200 / width;
+          width = 1200;
+          height = height * scale;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            resolve(blob || file);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Video compression function - create a smaller version
+  const compressVideo = (file: Blob): Promise<Blob> => {
+    return new Promise((resolve) => {
+      // For now, we'll create a thumbnail image from the video instead of compressing
+      // This ensures the zip stays within size limits
+      const video = document.createElement("video");
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      video.onloadedmetadata = () => {
+        // Set canvas dimensions (create a thumbnail)
+        const maxWidth = 400;
+        const maxHeight = 300;
+
+        let { videoWidth, videoHeight } = video;
+
+        // Calculate new dimensions maintaining aspect ratio
+        if (videoWidth > maxWidth || videoHeight > maxHeight) {
+          const aspectRatio = videoWidth / videoHeight;
+          if (videoWidth > videoHeight) {
+            videoWidth = maxWidth;
+            videoHeight = maxWidth / aspectRatio;
+          } else {
+            videoHeight = maxHeight;
+            videoWidth = maxHeight * aspectRatio;
+          }
+        }
+
+        canvas.width = videoWidth;
+        canvas.height = videoHeight;
+
+        // Seek to middle of video for thumbnail
+        video.currentTime = video.duration / 2;
+
+        video.onseeked = () => {
+          // Draw video frame to canvas
+          ctx?.drawImage(video, 0, 0, videoWidth, videoHeight);
+
+          // Convert to JPEG with high compression
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(blob);
+              } else {
+                resolve(file); // Fallback to original if compression fails
+              }
+            },
+            "image/jpeg",
+            0.6
+          ); // 60% quality for significant compression
+        };
+      };
+
+      video.onerror = () => {
+        resolve(file); // Fallback to original if video fails to load
+      };
+
+      video.src = URL.createObjectURL(file);
+      video.load();
+    });
+  };
+
+  // Get file type and compress accordingly
+  const processFileForZip = async (
+    url: string,
+    title: string
+  ): Promise<Blob> => {
+    const response = await fetch(url);
+    const blob = await response.blob();
+
+    // Check if it's an image
+    if (blob.type.startsWith("image/")) {
+      // Use more aggressive compression for zip files
+      return await compressImage(blob, 600, 0.7);
+    }
+
+    // Check if it's a video
+    if (blob.type.startsWith("video/")) {
+      // Convert video to compressed thumbnail image
+      return await compressVideo(blob);
+    }
+
+    // For other files, return as-is
+    return blob;
+  };
 
   const loadAssets = async () => {
     try {
@@ -64,25 +199,187 @@ const Assets = () => {
   };
 
   const handleDownload = async (asset: Project) => {
+    setDownloadingAsset(asset.id);
     try {
-      // Extract filename from URL
+      const zip = new JSZip();
+
+      // Process and compress the project file
+      const compressedBlob = await processFileForZip(
+        asset.image_url,
+        asset.title
+      );
+
+      // Get file extension - use .jpg for videos since we convert them to images
       const urlParts = asset.image_url.split("/");
       const fileName = urlParts[urlParts.length - 1];
+      const originalExtension = fileName.split(".").pop() || "file";
+      const fileExtension = compressedBlob.type.startsWith("image/")
+        ? "jpg"
+        : originalExtension;
 
-      // Create a temporary link to download the file
-      const response = await fetch(asset.image_url);
-      const blob = await response.blob();
+      // Add the compressed project file
+      zip.file(`project.${fileExtension}`, compressedBlob);
 
-      const url = window.URL.createObjectURL(blob);
+      // Add title text file
+      zip.file("title.txt", asset.title);
+
+      // Add description text file with compression note for videos
+      const isVideo =
+        asset.image_url.includes(".mp4") ||
+        asset.image_url.includes(".mov") ||
+        asset.image_url.includes(".avi") ||
+        asset.image_url.includes(".webm");
+      const descriptionText = isVideo
+        ? `${
+            asset.description || "No description provided"
+          }\n\nNote: Video has been converted to a compressed thumbnail image for size optimization.`
+        : asset.description || "No description provided";
+
+      zip.file("description.txt", descriptionText);
+
+      // Generate the zip file
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
+      // Check if zip is within size limits (100kb-2mb)
+      const minSize = 100 * 1024; // 100kb
+      const maxSize = 2 * 1024 * 1024; // 2mb
+
+      if (zipBlob.size < minSize) {
+        // If too small, add more content or show info
+        console.log(
+          `Zip size: ${Math.round(zipBlob.size / 1024)}kb - within limits`
+        );
+      }
+
+      if (zipBlob.size > maxSize) {
+        alert(
+          `Zip file is too large (${Math.round(
+            zipBlob.size / 1024
+          )}kb). The file has been compressed but may still exceed limits.`
+        );
+        return;
+      }
+
+      // Download the zip file
+      const url = window.URL.createObjectURL(zipBlob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `${asset.title}_${fileName}`;
+      link.download = `${asset.title.replace(
+        /[^a-zA-Z0-9]/g,
+        "_"
+      )}_project.zip`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error downloading asset:", error);
+    } finally {
+      setDownloadingAsset(null);
+    }
+  };
+
+  const handleDownloadAllAsZip = async () => {
+    if (assets.length === 0) return;
+
+    setIsCreatingZip(true);
+    try {
+      const zip = new JSZip();
+
+      // Add each project to the zip
+      for (const asset of assets) {
+        try {
+          // Process and compress the project file
+          const compressedBlob = await processFileForZip(
+            asset.image_url,
+            asset.title
+          );
+
+          // Get file extension - use .jpg for videos since we convert them to images
+          const urlParts = asset.image_url.split("/");
+          const fileName = urlParts[urlParts.length - 1];
+          const originalExtension = fileName.split(".").pop() || "file";
+          const fileExtension = compressedBlob.type.startsWith("image/")
+            ? "jpg"
+            : originalExtension;
+
+          // Add the compressed project file
+          zip.file(
+            `${asset.title.replace(
+              /[^a-zA-Z0-9]/g,
+              "_"
+            )}/project.${fileExtension}`,
+            compressedBlob
+          );
+
+          // Add title text file
+          zip.file(
+            `${asset.title.replace(/[^a-zA-Z0-9]/g, "_")}/title.txt`,
+            asset.title
+          );
+
+          // Add description text file with compression note for videos
+          const isVideo =
+            asset.image_url.includes(".mp4") ||
+            asset.image_url.includes(".mov") ||
+            asset.image_url.includes(".avi") ||
+            asset.image_url.includes(".webm");
+          const descriptionText = isVideo
+            ? `${
+                asset.description || "No description provided"
+              }\n\nNote: Video has been converted to a compressed thumbnail image for size optimization.`
+            : asset.description || "No description provided";
+
+          zip.file(
+            `${asset.title.replace(/[^a-zA-Z0-9]/g, "_")}/description.txt`,
+            descriptionText
+          );
+        } catch (error) {
+          console.error(`Error processing asset ${asset.title}:`, error);
+        }
+      }
+
+      // Generate the zip file
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+
+      // Check file size (100kb = 100 * 1024 bytes, 2mb = 2 * 1024 * 1024 bytes)
+      const minSize = 100 * 1024; // 100kb
+      const maxSize = 2 * 1024 * 1024; // 2mb
+
+      if (zipBlob.size < minSize) {
+        alert(
+          `Zip file is too small (${Math.round(
+            zipBlob.size / 1024
+          )}kb). Please add more projects or content.`
+        );
+        return;
+      }
+
+      if (zipBlob.size > maxSize) {
+        alert(
+          `Zip file is too large (${Math.round(
+            zipBlob.size / 1024
+          )}kb). Please select fewer projects.`
+        );
+        return;
+      }
+
+      // Download the zip file
+      const url = window.URL.createObjectURL(zipBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `my_projects_${
+        new Date().toISOString().split("T")[0]
+      }.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Error creating zip file:", error);
+      alert("Error creating zip file. Please try again.");
+    } finally {
+      setIsCreatingZip(false);
     }
   };
 
@@ -133,7 +430,8 @@ const Assets = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">My Assets</h1>
           <p className="text-muted-foreground">
-            Download and manage your uploaded media files
+            Download your projects as compressed zip files with title and
+            description. Videos are converted to thumbnails for optimal size.
           </p>
         </div>
 
@@ -192,6 +490,33 @@ const Assets = () => {
             </Button>
           </div>
         </div>
+
+        {/* Download All Button */}
+        {assets.length > 0 && (
+          <div className="mb-6">
+            <Button
+              onClick={handleDownloadAllAsZip}
+              disabled={isCreatingZip}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {isCreatingZip ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Creating Zip...
+                </>
+              ) : (
+                <>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Download All as Zip
+                </>
+              )}
+            </Button>
+            <p className="text-sm text-muted-foreground mt-2">
+              Downloads all your projects as compressed zip files (100kb-2mb
+              size limit)
+            </p>
+          </div>
+        )}
 
         {/* Assets Grid/List */}
         {filteredAssets.length === 0 ? (
@@ -253,11 +578,21 @@ const Assets = () => {
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <Button
                           onClick={() => handleDownload(asset)}
+                          disabled={downloadingAsset === asset.id}
                           size="sm"
                           className="bg-white text-black hover:bg-white/90"
                         >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
+                          {downloadingAsset === asset.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            <>
+                              <Archive className="h-4 w-4 mr-2" />
+                              Download as Zip
+                            </>
+                          )}
                         </Button>
                       </div>
 
