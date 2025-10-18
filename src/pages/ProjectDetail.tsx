@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -43,11 +43,27 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
+import { User } from "@supabase/supabase-js";
 
 type Project = Database["public"]["Tables"]["projects"]["Row"] & {
   profiles: Database["public"]["Tables"]["profiles"]["Row"] | null;
   categories: Database["public"]["Tables"]["categories"]["Row"] | null;
   isLiked?: boolean;
+};
+
+type Comment = {
+  id: string;
+  content: string;
+  created_at: string;
+  project_id: string;
+  updated_at: string;
+  user_id: string;
+  profiles: {
+    id: string;
+    username: string;
+    full_name: string;
+    avatar_url: string;
+  } | null;
 };
 
 const ProjectDetail = () => {
@@ -59,13 +75,13 @@ const ProjectDetail = () => {
   const [isLiking, setIsLiking] = useState(false);
   const [localLiked, setLocalLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [savesCount, setSavesCount] = useState(0);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [isCommenting, setIsCommenting] = useState(false);
   const [commentsCount, setCommentsCount] = useState(0);
@@ -74,18 +90,6 @@ const ProjectDetail = () => {
   const [followersCount, setFollowersCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    loadProject();
-    getCurrentUser();
-  }, [id]);
-
-  useEffect(() => {
-    if (currentUser && project) {
-      checkIfSaved();
-      checkIfFollowing();
-    }
-  }, [currentUser, project]);
-
   const getCurrentUser = async () => {
     const {
       data: { user },
@@ -93,7 +97,44 @@ const ProjectDetail = () => {
     setCurrentUser(user);
   };
 
-  const loadProject = async () => {
+  const loadComments = useCallback(async () => {
+    if (!project) return;
+
+    try {
+      const { data: commentsData, error } = await supabase
+        .from("comments")
+        .select(
+          `
+          *,
+          profiles:user_id (
+            id,
+            username,
+            full_name,
+            avatar_url
+          )
+        `
+        )
+        .eq("project_id", project.id)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading comments:", error);
+        throw error;
+      }
+
+      setComments(commentsData || []);
+    } catch (error: unknown) {
+      console.error("Error loading comments:", error);
+      toast({
+        title: "Error loading comments",
+        description:
+          error instanceof Error ? error.message : "Failed to load comments",
+        variant: "destructive",
+      });
+    }
+  }, [project, toast]);
+
+  const loadProject = useCallback(async () => {
     if (!id) return;
 
     setLoading(true);
@@ -145,7 +186,7 @@ const ProjectDetail = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate, loadComments]);
 
   const handleLike = async () => {
     const {
@@ -259,7 +300,7 @@ const ProjectDetail = () => {
         if (error) {
           console.error("Error saving project:", error);
           // Check if it's a duplicate key error
-          if (error.code === '23505') {
+          if (error.code === "23505") {
             toast({
               title: "Already saved",
               description: "This project is already in your saved items",
@@ -276,11 +317,14 @@ const ProjectDetail = () => {
           description: "Project added to your saved items",
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error toggling save:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update save status",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update save status",
         variant: "destructive",
       });
     } finally {
@@ -288,7 +332,7 @@ const ProjectDetail = () => {
     }
   };
 
-  const checkIfFollowing = async () => {
+  const checkIfFollowing = useCallback(async () => {
     if (!currentUser || !project) return;
 
     try {
@@ -309,7 +353,7 @@ const ProjectDetail = () => {
     } catch (error) {
       console.error("Error checking follow status:", error);
     }
-  };
+  }, [currentUser, project]);
 
   const handleFollow = async () => {
     if (!currentUser || !project) {
@@ -351,7 +395,9 @@ const ProjectDetail = () => {
         setFollowersCount((prev) => Math.max(0, prev - 1));
         toast({
           title: "Unfollowed",
-          description: `You are no longer following ${project.profiles?.full_name || project.profiles?.username}`,
+          description: `You are no longer following ${
+            project.profiles?.full_name || project.profiles?.username
+          }`,
         });
       } else {
         // Follow
@@ -363,7 +409,7 @@ const ProjectDetail = () => {
         if (error) {
           console.error("Error following:", error);
           // Check if it's a duplicate key error
-          if (error.code === '23505') {
+          if (error.code === "23505") {
             toast({
               title: "Already following",
               description: "You are already following this creator",
@@ -377,14 +423,19 @@ const ProjectDetail = () => {
         setFollowersCount((prev) => prev + 1);
         toast({
           title: "Following",
-          description: `You are now following ${project.profiles?.full_name || project.profiles?.username}`,
+          description: `You are now following ${
+            project.profiles?.full_name || project.profiles?.username
+          }`,
         });
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating follow status:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to update follow status",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to update follow status",
         variant: "destructive",
       });
     } finally {
@@ -440,11 +491,12 @@ const ProjectDetail = () => {
         title: "Comment added",
         description: "Your comment has been posted",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding comment:", error);
       toast({
         title: "Error",
-        description: error.message || "Failed to add comment",
+        description:
+          error instanceof Error ? error.message : "Failed to add comment",
         variant: "destructive",
       });
     } finally {
@@ -452,43 +504,7 @@ const ProjectDetail = () => {
     }
   };
 
-  const loadComments = async () => {
-    if (!project) return;
-
-    try {
-      const { data: commentsData, error } = await supabase
-        .from("comments")
-        .select(
-          `
-          *,
-          profiles:user_id (
-            id,
-            username,
-            full_name,
-            avatar_url
-          )
-        `
-        )
-        .eq("project_id", project.id)
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("Error loading comments:", error);
-        throw error;
-      }
-
-      setComments(commentsData || []);
-    } catch (error: any) {
-      console.error("Error loading comments:", error);
-      toast({
-        title: "Error loading comments",
-        description: error.message || "Failed to load comments",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const checkIfSaved = async () => {
+  const checkIfSaved = useCallback(async () => {
     if (!currentUser || !project) return;
 
     try {
@@ -499,18 +515,18 @@ const ProjectDetail = () => {
         .eq("project_id", project.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error && error.code !== "PGRST116") {
         // PGRST116 is "not found" error, which is expected
         console.error("Error checking save status:", error);
         return;
       }
 
       setIsSaved(!!saveData);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error checking save status:", error);
       // Don't show error toast for this as it's not critical
     }
-  };
+  }, [currentUser, project]);
 
   const isProjectOwner =
     currentUser && project && currentUser.id === project.user_id;
@@ -1218,7 +1234,11 @@ const ProjectDetail = () => {
                         />
                         <div className="flex justify-between items-center text-xs text-muted-foreground">
                           <span>Share your thoughts about this project</span>
-                          <span className={newComment.length > 900 ? "text-orange-500" : ""}>
+                          <span
+                            className={
+                              newComment.length > 900 ? "text-orange-500" : ""
+                            }
+                          >
                             {newComment.length}/1000
                           </span>
                         </div>

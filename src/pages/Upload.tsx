@@ -1,15 +1,26 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Header } from "@/components/Header";
-import { Upload as UploadIcon, X, Image as ImageIcon, Video as VideoIcon } from "lucide-react";
+import {
+  Upload as UploadIcon,
+  X,
+  Image as ImageIcon,
+  Video as VideoIcon,
+} from "lucide-react";
 import { Database } from "@/integrations/supabase/types";
 
 type Category = Database["public"]["Tables"]["categories"]["Row"];
@@ -22,7 +33,7 @@ export default function Upload() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isVideoSelected, setIsVideoSelected] = useState<boolean>(false);
-  const [uploadType, setUploadType] = useState<'image' | 'video'>('image');
+  const [uploadType, setUploadType] = useState<"image" | "video">("image");
   const [uploading, setUploading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -32,20 +43,27 @@ export default function Upload() {
     const selected = categories.find((c) => c.id === categoryId);
     if (!selected) return false;
     const name = (selected.name || "").toLowerCase();
-    return name === "edited video" || name === "motion" || name === "animation" || name === "video production";
+    return (
+      name === "edited video" ||
+      name === "motion" ||
+      name === "animation" ||
+      name === "video production"
+    );
   })();
+
+  const checkAuth = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      navigate("/auth");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     checkAuth();
     loadCategories();
-  }, []);
-
-  const checkAuth = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      navigate("/auth");
-    }
-  };
+  }, [checkAuth]);
 
   const loadCategories = async () => {
     const { data, error } = await supabase
@@ -67,8 +85,8 @@ export default function Upload() {
       // Validate file type based on upload type
       const isVideo = file.type.startsWith("video/");
       const isImage = file.type.startsWith("image/");
-      
-      if (uploadType === 'video' && !isVideo) {
+
+      if (uploadType === "video" && !isVideo) {
         toast({
           title: "Invalid File Type",
           description: "Please select a video file (MP4, WebM, MOV, etc.)",
@@ -76,10 +94,10 @@ export default function Upload() {
         });
         return;
       }
-      
-      if (uploadType === 'image' && !isImage) {
+
+      if (uploadType === "image" && !isImage) {
         toast({
-          title: "Invalid File Type", 
+          title: "Invalid File Type",
           description: "Please select an image file (PNG, JPG, WEBP, etc.)",
           variant: "destructive",
         });
@@ -87,11 +105,14 @@ export default function Upload() {
       }
 
       // Validate file size
-      const maxSize = uploadType === 'video' ? 200 * 1024 * 1024 : 10 * 1024 * 1024; // 200MB for video, 10MB for image
+      const maxSize =
+        uploadType === "video" ? 200 * 1024 * 1024 : 10 * 1024 * 1024; // 200MB for video, 10MB for image
       if (file.size > maxSize) {
         toast({
           title: "File Too Large",
-          description: `File size must be less than ${uploadType === 'video' ? '200MB' : '10MB'}`,
+          description: `File size must be less than ${
+            uploadType === "video" ? "200MB" : "10MB"
+          }`,
           variant: "destructive",
         });
         return;
@@ -113,7 +134,7 @@ export default function Upload() {
     setIsVideoSelected(false);
   };
 
-  const handleUploadTypeChange = (type: 'image' | 'video') => {
+  const handleUploadTypeChange = (type: "image" | "video") => {
     setUploadType(type);
     // Clear current file when switching types
     if (imageFile) {
@@ -125,11 +146,14 @@ export default function Upload() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!imageFile) {
       toast({
         title: "Error",
-        description: uploadType === 'video' ? "Please select a video" : "Please select an image",
+        description:
+          uploadType === "video"
+            ? "Please select a video"
+            : "Please select an image",
         variant: "destructive",
       });
       return;
@@ -138,13 +162,15 @@ export default function Upload() {
     setUploading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
       // Upload media (image or video)
       const fileExt = imageFile.name.split(".").pop();
       const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-      
+
       const { error: uploadError } = await supabase.storage
         .from("projects")
         .upload(fileName, imageFile);
@@ -152,20 +178,18 @@ export default function Upload() {
       if (uploadError) throw uploadError;
 
       // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from("projects")
-        .getPublicUrl(fileName);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("projects").getPublicUrl(fileName);
 
       // Create project (store media URL in image_url for now)
-      const { error: projectError } = await supabase
-        .from("projects")
-        .insert({
-          user_id: user.id,
-          title,
-          description,
-          image_url: publicUrl,
-          category_id: categoryId || null,
-        });
+      const { error: projectError } = await supabase.from("projects").insert({
+        user_id: user.id,
+        title,
+        description,
+        image_url: publicUrl,
+        category_id: categoryId || null,
+      });
 
       if (projectError) throw projectError;
 
@@ -175,10 +199,11 @@ export default function Upload() {
       });
 
       navigate("/");
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description:
+          error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -189,7 +214,7 @@ export default function Upload() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container max-w-3xl px-4 py-8">
         <Card>
           <CardHeader>
@@ -203,8 +228,8 @@ export default function Upload() {
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={uploadType === 'image' ? 'default' : 'outline'}
-                    onClick={() => handleUploadTypeChange('image')}
+                    variant={uploadType === "image" ? "default" : "outline"}
+                    onClick={() => handleUploadTypeChange("image")}
                     className="flex-1"
                   >
                     <ImageIcon className="h-4 w-4 mr-2" />
@@ -212,8 +237,8 @@ export default function Upload() {
                   </Button>
                   <Button
                     type="button"
-                    variant={uploadType === 'video' ? 'default' : 'outline'}
-                    onClick={() => handleUploadTypeChange('video')}
+                    variant={uploadType === "video" ? "default" : "outline"}
+                    onClick={() => handleUploadTypeChange("video")}
                     className="flex-1"
                   >
                     <VideoIcon className="h-4 w-4 mr-2" />
@@ -221,21 +246,30 @@ export default function Upload() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {uploadType === 'video' 
+                  {uploadType === "video"
                     ? "Videos will auto-play in the project grid and can be up to 200MB"
-                    : "Images are optimized for fast loading and can be up to 10MB"
-                  }
+                    : "Images are optimized for fast loading and can be up to 10MB"}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label>Project {uploadType === 'video' ? "Video" : "Image"} *</Label>
+                <Label>
+                  Project {uploadType === "video" ? "Video" : "Image"} *
+                </Label>
                 {imagePreview ? (
                   <div className="relative">
                     {isVideoSelected ? (
-                      <video src={imagePreview} className="w-full h-64 object-cover rounded-lg" controls />
+                      <video
+                        src={imagePreview}
+                        className="w-full h-64 object-cover rounded-lg"
+                        controls
+                      />
                     ) : (
-                      <img src={imagePreview} alt="Preview" className="w-full h-64 object-cover rounded-lg" />
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
                     )}
                     <Button
                       type="button"
@@ -252,16 +286,19 @@ export default function Upload() {
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
                       <UploadIcon className="h-10 w-10 mb-3 text-muted-foreground" />
                       <p className="mb-2 text-sm text-muted-foreground">
-                        <span className="font-semibold">Click to upload</span> or drag and drop
+                        <span className="font-semibold">Click to upload</span>{" "}
+                        or drag and drop
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {uploadType === 'video' ? "MP4, WebM, MOV (MAX. 200MB)" : "PNG, JPG, or WEBP (MAX. 10MB)"}
+                        {uploadType === "video"
+                          ? "MP4, WebM, MOV (MAX. 200MB)"
+                          : "PNG, JPG, or WEBP (MAX. 10MB)"}
                       </p>
                     </div>
                     <Input
                       type="file"
                       className="hidden"
-                      accept={uploadType === 'video' ? "video/*" : "image/*"}
+                      accept={uploadType === "video" ? "video/*" : "image/*"}
                       onChange={handleImageChange}
                     />
                   </label>

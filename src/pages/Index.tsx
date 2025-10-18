@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { CategoryFilter } from "@/components/CategoryFilter";
@@ -20,11 +20,7 @@ const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("all");
 
-  useEffect(() => {
-    loadProjects();
-  }, [selectedCategory, searchParams, activeSection]);
-
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     setLoading(true);
 
     const {
@@ -196,22 +192,29 @@ const Index = () => {
     }
 
     setLoading(false);
-  };
+  }, [selectedCategory, searchParams, activeSection]);
+
+  useEffect(() => {
+    loadProjects();
+  }, [loadProjects]);
 
   const getDateFilter = (dateRange: string) => {
     const now = new Date();
     switch (dateRange) {
       case "today":
         return now.toISOString().split("T")[0];
-      case "week":
+      case "week": {
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         return weekAgo.toISOString();
-      case "month":
+      }
+      case "month": {
         const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         return monthAgo.toISOString();
-      case "year":
+      }
+      case "year": {
         const yearAgo = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
         return yearAgo.toISOString();
+      }
       default:
         return null;
     }

@@ -1,6 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "@/components/Header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,14 +16,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  Bell, 
-  Shield, 
-  Palette, 
-  Globe, 
+import {
+  User as UserIcon,
+  Mail,
+  Lock,
+  Bell,
+  Shield,
+  Palette,
+  Globe,
   Camera,
   Save,
   Eye,
@@ -26,7 +32,7 @@ import {
   X,
   AlertCircle,
   Upload,
-  Trash2
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -38,7 +44,9 @@ const Settings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<import("@supabase/supabase-js").User | null>(
+    null
+  );
   const [showPassword, setShowPassword] = useState(false);
   const { toast } = useToast();
 
@@ -53,13 +61,13 @@ const Settings = () => {
     location: "",
     twitter: "",
     instagram: "",
-    linkedin: ""
+    linkedin: "",
   });
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
 
   const [notificationSettings, setNotificationSettings] = useState({
@@ -68,7 +76,7 @@ const Settings = () => {
     projectComments: true,
     newFollowers: true,
     weeklyDigest: true,
-    marketingEmails: false
+    marketingEmails: false,
   });
 
   const [privacySettings, setPrivacySettings] = useState({
@@ -76,16 +84,14 @@ const Settings = () => {
     showEmail: false,
     showLocation: true,
     allowMessages: true,
-    showOnlineStatus: true
+    showOnlineStatus: true,
   });
 
-  useEffect(() => {
-    loadUserData();
-  }, []);
-
-  const loadUserData = async () => {
+  const loadUserData = useCallback(async () => {
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      const {
+        data: { user: currentUser },
+      } = await supabase.auth.getUser();
       if (!currentUser) return;
 
       setUser(currentUser);
@@ -120,7 +126,7 @@ const Settings = () => {
         location: profileData?.location || "",
         twitter: profileData?.twitter || "",
         instagram: profileData?.instagram || "",
-        linkedin: profileData?.linkedin || ""
+        linkedin: profileData?.linkedin || "",
       });
     } catch (error) {
       console.error("Error loading user data:", error);
@@ -132,12 +138,16 @@ const Settings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadUserData();
+  }, [loadUserData]);
 
   const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -169,7 +179,8 @@ const Settings = () => {
         if (existingProfile) {
           toast({
             title: "Username Taken",
-            description: "This username is already taken. Please choose another.",
+            description:
+              "This username is already taken. Please choose another.",
             variant: "destructive",
           });
           setSaving(false);
@@ -178,12 +189,12 @@ const Settings = () => {
       }
 
       // Update profile - only include fields that exist in the database
-      const updateData: any = {
+      const updateData: Partial<Profile> = {
         username: formData.username,
         full_name: formData.full_name,
         bio: formData.bio,
         avatar_url: formData.avatar_url,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
 
       // Add optional fields if they have values
@@ -220,7 +231,9 @@ const Settings = () => {
       console.error("Error updating profile:", error);
       toast({
         title: "Error",
-        description: `Failed to update profile: ${error.message || 'Please try again.'}`,
+        description: `Failed to update profile: ${
+          error.message || "Please try again."
+        }`,
         variant: "destructive",
       });
     } finally {
@@ -252,7 +265,7 @@ const Settings = () => {
     setSaving(true);
     try {
       const { error } = await supabase.auth.updateUser({
-        password: passwordData.newPassword
+        password: passwordData.newPassword,
       });
 
       if (error) {
@@ -267,7 +280,7 @@ const Settings = () => {
       setPasswordData({
         currentPassword: "",
         newPassword: "",
-        confirmPassword: ""
+        confirmPassword: "",
       });
     } catch (error) {
       console.error("Error updating password:", error);
@@ -281,7 +294,9 @@ const Settings = () => {
     }
   };
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -309,7 +324,7 @@ const Settings = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Settings</h1>
@@ -342,7 +357,9 @@ const Settings = () => {
                     <Avatar className="h-20 w-20">
                       <AvatarImage src={formData.avatar_url} />
                       <AvatarFallback className="text-lg">
-                        {formData.full_name?.[0] || formData.username?.[0] || "U"}
+                        {formData.full_name?.[0] ||
+                          formData.username?.[0] ||
+                          "U"}
                       </AvatarFallback>
                     </Avatar>
                     <label className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground rounded-full p-2 cursor-pointer hover:bg-primary/90 transition-colors">
@@ -372,7 +389,9 @@ const Settings = () => {
                     <Input
                       id="username"
                       value={formData.username}
-                      onChange={(e) => handleInputChange("username", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("username", e.target.value)
+                      }
                       placeholder="Enter your username"
                     />
                     <p className="text-xs text-muted-foreground">
@@ -385,7 +404,9 @@ const Settings = () => {
                     <Input
                       id="full_name"
                       value={formData.full_name}
-                      onChange={(e) => handleInputChange("full_name", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("full_name", e.target.value)
+                      }
                       placeholder="Enter your full name"
                     />
                   </div>
@@ -414,7 +435,9 @@ const Settings = () => {
                       <Input
                         id="website"
                         value={formData.website}
-                        onChange={(e) => handleInputChange("website", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("website", e.target.value)
+                        }
                         placeholder="https://yourwebsite.com"
                       />
                     </div>
@@ -424,7 +447,9 @@ const Settings = () => {
                       <Input
                         id="location"
                         value={formData.location}
-                        onChange={(e) => handleInputChange("location", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("location", e.target.value)
+                        }
                         placeholder="City, Country"
                       />
                     </div>
@@ -434,7 +459,9 @@ const Settings = () => {
                       <Input
                         id="twitter"
                         value={formData.twitter}
-                        onChange={(e) => handleInputChange("twitter", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("twitter", e.target.value)
+                        }
                         placeholder="@username"
                       />
                     </div>
@@ -444,7 +471,9 @@ const Settings = () => {
                       <Input
                         id="instagram"
                         value={formData.instagram}
-                        onChange={(e) => handleInputChange("instagram", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("instagram", e.target.value)
+                        }
                         placeholder="@username"
                       />
                     </div>
@@ -454,7 +483,9 @@ const Settings = () => {
                       <Input
                         id="linkedin"
                         value={formData.linkedin}
-                        onChange={(e) => handleInputChange("linkedin", e.target.value)}
+                        onChange={(e) =>
+                          handleInputChange("linkedin", e.target.value)
+                        }
                         placeholder="linkedin.com/in/username"
                       />
                     </div>
@@ -513,10 +544,12 @@ const Settings = () => {
                           id="currentPassword"
                           type={showPassword ? "text" : "password"}
                           value={passwordData.currentPassword}
-                          onChange={(e) => setPasswordData(prev => ({
-                            ...prev,
-                            currentPassword: e.target.value
-                          }))}
+                          onChange={(e) =>
+                            setPasswordData((prev) => ({
+                              ...prev,
+                              currentPassword: e.target.value,
+                            }))
+                          }
                           placeholder="Enter current password"
                         />
                         <Button
@@ -541,24 +574,30 @@ const Settings = () => {
                         id="newPassword"
                         type="password"
                         value={passwordData.newPassword}
-                        onChange={(e) => setPasswordData(prev => ({
-                          ...prev,
-                          newPassword: e.target.value
-                        }))}
+                        onChange={(e) =>
+                          setPasswordData((prev) => ({
+                            ...prev,
+                            newPassword: e.target.value,
+                          }))
+                        }
                         placeholder="Enter new password"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Label htmlFor="confirmPassword">
+                        Confirm New Password
+                      </Label>
                       <Input
                         id="confirmPassword"
                         type="password"
                         value={passwordData.confirmPassword}
-                        onChange={(e) => setPasswordData(prev => ({
-                          ...prev,
-                          confirmPassword: e.target.value
-                        }))}
+                        onChange={(e) =>
+                          setPasswordData((prev) => ({
+                            ...prev,
+                            confirmPassword: e.target.value,
+                          }))
+                        }
                         placeholder="Confirm new password"
                       />
                     </div>
@@ -603,9 +642,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.emailNotifications}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          emailNotifications: checked
+                          emailNotifications: checked,
                         }))
                       }
                     />
@@ -621,9 +660,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.projectLikes}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          projectLikes: checked
+                          projectLikes: checked,
                         }))
                       }
                     />
@@ -639,9 +678,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.projectComments}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          projectComments: checked
+                          projectComments: checked,
                         }))
                       }
                     />
@@ -657,9 +696,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.newFollowers}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          newFollowers: checked
+                          newFollowers: checked,
                         }))
                       }
                     />
@@ -675,9 +714,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.weeklyDigest}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          weeklyDigest: checked
+                          weeklyDigest: checked,
                         }))
                       }
                     />
@@ -693,9 +732,9 @@ const Settings = () => {
                     <Switch
                       checked={notificationSettings.marketingEmails}
                       onCheckedChange={(checked) =>
-                        setNotificationSettings(prev => ({
+                        setNotificationSettings((prev) => ({
                           ...prev,
-                          marketingEmails: checked
+                          marketingEmails: checked,
                         }))
                       }
                     />
@@ -722,15 +761,22 @@ const Settings = () => {
                       className="w-full px-3 py-2 border border-input rounded-md bg-background"
                       value={privacySettings.profileVisibility}
                       onChange={(e) =>
-                        setPrivacySettings(prev => ({
+                        setPrivacySettings((prev) => ({
                           ...prev,
-                          profileVisibility: e.target.value
+                          profileVisibility: e.target.value,
                         }))
                       }
                     >
-                      <option value="public">Public - Anyone can see your profile</option>
-                      <option value="followers">Followers Only - Only your followers can see your profile</option>
-                      <option value="private">Private - Only you can see your profile</option>
+                      <option value="public">
+                        Public - Anyone can see your profile
+                      </option>
+                      <option value="followers">
+                        Followers Only - Only your followers can see your
+                        profile
+                      </option>
+                      <option value="private">
+                        Private - Only you can see your profile
+                      </option>
                     </select>
                   </div>
 
@@ -744,9 +790,9 @@ const Settings = () => {
                     <Switch
                       checked={privacySettings.showEmail}
                       onCheckedChange={(checked) =>
-                        setPrivacySettings(prev => ({
+                        setPrivacySettings((prev) => ({
                           ...prev,
-                          showEmail: checked
+                          showEmail: checked,
                         }))
                       }
                     />
@@ -762,9 +808,9 @@ const Settings = () => {
                     <Switch
                       checked={privacySettings.showLocation}
                       onCheckedChange={(checked) =>
-                        setPrivacySettings(prev => ({
+                        setPrivacySettings((prev) => ({
                           ...prev,
-                          showLocation: checked
+                          showLocation: checked,
                         }))
                       }
                     />
@@ -780,9 +826,9 @@ const Settings = () => {
                     <Switch
                       checked={privacySettings.allowMessages}
                       onCheckedChange={(checked) =>
-                        setPrivacySettings(prev => ({
+                        setPrivacySettings((prev) => ({
                           ...prev,
-                          allowMessages: checked
+                          allowMessages: checked,
                         }))
                       }
                     />
@@ -798,9 +844,9 @@ const Settings = () => {
                     <Switch
                       checked={privacySettings.showOnlineStatus}
                       onCheckedChange={(checked) =>
-                        setPrivacySettings(prev => ({
+                        setPrivacySettings((prev) => ({
                           ...prev,
-                          showOnlineStatus: checked
+                          showOnlineStatus: checked,
                         }))
                       }
                     />

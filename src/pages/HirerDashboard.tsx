@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,21 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
@@ -64,7 +76,6 @@ import {
   BookOpen,
   Target as TargetIcon,
   Monitor,
-  Cube,
   Heart,
   Share2,
   Download,
@@ -111,6 +122,114 @@ interface HirerProject {
   client: Profile;
 }
 
+// Mock data for demonstration
+const mockProjects: HirerProject[] = [
+  {
+    id: "1",
+    title: "Modern Website Redesign",
+    description:
+      "Looking for a talented designer to redesign our company website with modern UI/UX principles.",
+    budget: 5000,
+    status: "published",
+    category: "Web Design",
+    skills_required: ["UI/UX", "Figma", "React", "Responsive Design"],
+    proposals_count: 12,
+    created_at: "2024-01-15",
+    deadline: "2024-02-15",
+    client_id: "1",
+    client: {
+      id: "1",
+      full_name: "John Smith",
+      username: "johnsmith",
+      avatar_url: "",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      banner_url: "",
+      bio: "",
+      location: "",
+      website: "",
+      is_available: true,
+      hourly_rate: 0,
+      followers_count: 0,
+      following_count: 0,
+      instagram: "",
+      linkedin: "",
+      twitter: "",
+    },
+  },
+  {
+    id: "2",
+    title: "Mobile App UI Design",
+    description:
+      "Need a creative designer to create beautiful mobile app interfaces for our fitness tracking app.",
+    budget: 3000,
+    status: "in-progress",
+    category: "Mobile Design",
+    skills_required: ["Mobile Design", "iOS", "Android", "Prototyping"],
+    proposals_count: 8,
+    created_at: "2024-01-10",
+    deadline: "2024-02-10",
+    client_id: "2",
+    client: {
+      id: "2",
+      full_name: "Sarah Johnson",
+      username: "sarahj",
+      avatar_url: "",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      banner_url: "",
+      bio: "",
+      location: "",
+      website: "",
+      is_available: true,
+      hourly_rate: 0,
+      followers_count: 0,
+      following_count: 0,
+      instagram: "",
+      linkedin: "",
+      twitter: "",
+    },
+  },
+  {
+    id: "3",
+    title: "Brand Identity Package",
+    description:
+      "Complete brand identity design including logo, business cards, and brand guidelines.",
+    budget: 2500,
+    status: "completed",
+    category: "Branding",
+    skills_required: [
+      "Logo Design",
+      "Branding",
+      "Illustration",
+      "Print Design",
+    ],
+    proposals_count: 15,
+    created_at: "2024-01-05",
+    deadline: "2024-01-25",
+    client_id: "3",
+    client: {
+      id: "3",
+      full_name: "Mike Chen",
+      username: "mikechen",
+      avatar_url: "",
+      created_at: "2024-01-01",
+      updated_at: "2024-01-01",
+      banner_url: "",
+      bio: "",
+      location: "",
+      website: "",
+      is_available: true,
+      hourly_rate: 0,
+      followers_count: 0,
+      following_count: 0,
+      instagram: "",
+      linkedin: "",
+      twitter: "",
+    },
+  },
+];
+
 const HirerDashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -130,94 +249,6 @@ const HirerDashboard = () => {
     skills_required: [] as string[],
     deadline: "",
   });
-
-  // Mock data for demonstration
-  const mockProjects: HirerProject[] = [
-    {
-      id: "1",
-      title: "Modern Website Redesign",
-      description: "Looking for a talented designer to redesign our company website with modern UI/UX principles.",
-      budget: 5000,
-      status: "published",
-      category: "Web Design",
-      skills_required: ["UI/UX", "Figma", "React", "Responsive Design"],
-      proposals_count: 12,
-      created_at: "2024-01-15",
-      deadline: "2024-02-15",
-      client_id: "1",
-      client: {
-        id: "1",
-        full_name: "John Smith",
-        username: "johnsmith",
-        avatar_url: null,
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        banner_url: null,
-        bio: null,
-        location: null,
-        website: null,
-        is_available: true,
-        hourly_rate: null,
-        user_id: "1",
-      },
-    },
-    {
-      id: "2",
-      title: "Mobile App UI Design",
-      description: "Need a creative designer to create beautiful mobile app interfaces for our fitness tracking app.",
-      budget: 3000,
-      status: "in-progress",
-      category: "Mobile Design",
-      skills_required: ["Mobile Design", "iOS", "Android", "Prototyping"],
-      proposals_count: 8,
-      created_at: "2024-01-10",
-      deadline: "2024-02-10",
-      client_id: "2",
-      client: {
-        id: "2",
-        full_name: "Sarah Johnson",
-        username: "sarahj",
-        avatar_url: null,
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        banner_url: null,
-        bio: null,
-        location: null,
-        website: null,
-        is_available: true,
-        hourly_rate: null,
-        user_id: "2",
-      },
-    },
-    {
-      id: "3",
-      title: "Brand Identity Package",
-      description: "Complete brand identity design including logo, business cards, and brand guidelines.",
-      budget: 2500,
-      status: "completed",
-      category: "Branding",
-      skills_required: ["Logo Design", "Branding", "Illustration", "Print Design"],
-      proposals_count: 15,
-      created_at: "2024-01-05",
-      deadline: "2024-01-25",
-      client_id: "3",
-      client: {
-        id: "3",
-        full_name: "Mike Chen",
-        username: "mikechen",
-        avatar_url: null,
-        created_at: "2024-01-01",
-        updated_at: "2024-01-01",
-        banner_url: null,
-        bio: null,
-        location: null,
-        website: null,
-        is_available: true,
-        hourly_rate: null,
-        user_id: "3",
-      },
-    },
-  ];
 
   const mockStats = {
     totalProjects: 12,
@@ -246,22 +277,53 @@ const HirerDashboard = () => {
   ];
 
   const skills = [
-    "UI/UX", "Figma", "React", "Responsive Design", "Mobile Design", "iOS", "Android",
-    "Prototyping", "Logo Design", "Branding", "Illustration", "Print Design", "Photoshop",
-    "Illustrator", "Sketch", "Adobe XD", "InVision", "Principle", "Framer", "Webflow",
-    "HTML", "CSS", "JavaScript", "Vue.js", "Angular", "Node.js", "Python", "WordPress",
-    "Shopify", "Photography", "Videography", "After Effects", "Premiere Pro", "Cinema 4D",
-    "Blender", "Maya", "3ds Max", "ZBrush", "Substance", "Unity", "Unreal Engine"
+    "UI/UX",
+    "Figma",
+    "React",
+    "Responsive Design",
+    "Mobile Design",
+    "iOS",
+    "Android",
+    "Prototyping",
+    "Logo Design",
+    "Branding",
+    "Illustration",
+    "Print Design",
+    "Photoshop",
+    "Illustrator",
+    "Sketch",
+    "Adobe XD",
+    "InVision",
+    "Principle",
+    "Framer",
+    "Webflow",
+    "HTML",
+    "CSS",
+    "JavaScript",
+    "Vue.js",
+    "Angular",
+    "Node.js",
+    "Python",
+    "WordPress",
+    "Shopify",
+    "Photography",
+    "Videography",
+    "After Effects",
+    "Premiere Pro",
+    "Cinema 4D",
+    "Blender",
+    "Maya",
+    "3ds Max",
+    "ZBrush",
+    "Substance",
+    "Unity",
+    "Unreal Engine",
   ];
 
-  useEffect(() => {
-    loadUserData();
-    setProjects(mockProjects);
-    setLoading(false);
-  }, []);
-
-  const loadUserData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
+  const loadUserData = useCallback(async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (user) {
       setUser(user);
       const { data: profileData } = await supabase
@@ -273,7 +335,13 @@ const HirerDashboard = () => {
     } else {
       navigate("/auth");
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    loadUserData();
+    setProjects(mockProjects);
+    setLoading(false);
+  }, [loadUserData]);
 
   const handleCreateProject = async () => {
     if (!newProject.title || !newProject.description || !newProject.budget) {
@@ -292,7 +360,9 @@ const HirerDashboard = () => {
       status: "draft",
       proposals_count: 0,
       created_at: new Date().toISOString(),
-      deadline: newProject.deadline || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      deadline:
+        newProject.deadline ||
+        new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       client_id: user?.id || "",
       client: profile!,
     };
@@ -316,28 +386,40 @@ const HirerDashboard = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "published": return "bg-green-100 text-green-800";
-      case "in-progress": return "bg-blue-100 text-blue-800";
-      case "completed": return "bg-gray-100 text-gray-800";
-      case "cancelled": return "bg-red-100 text-red-800";
-      default: return "bg-yellow-100 text-yellow-800";
+      case "published":
+        return "bg-green-100 text-green-800";
+      case "in-progress":
+        return "bg-blue-100 text-blue-800";
+      case "completed":
+        return "bg-gray-100 text-gray-800";
+      case "cancelled":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-yellow-100 text-yellow-800";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "published": return <CheckCircle className="h-4 w-4" />;
-      case "in-progress": return <Play className="h-4 w-4" />;
-      case "completed": return <Award className="h-4 w-4" />;
-      case "cancelled": return <XCircle className="h-4 w-4" />;
-      default: return <Pause className="h-4 w-4" />;
+      case "published":
+        return <CheckCircle className="h-4 w-4" />;
+      case "in-progress":
+        return <Play className="h-4 w-4" />;
+      case "completed":
+        return <Award className="h-4 w-4" />;
+      case "cancelled":
+        return <XCircle className="h-4 w-4" />;
+      default:
+        return <Pause className="h-4 w-4" />;
     }
   };
 
-  const filteredProjects = projects.filter(project => {
-    const matchesSearch = project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === "all" || project.status === filterStatus;
+  const filteredProjects = projects.filter((project) => {
+    const matchesSearch =
+      project.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      project.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      filterStatus === "all" || project.status === filterStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -362,7 +444,7 @@ const HirerDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      
+
       <div className="container mx-auto px-4 py-8">
         {/* Header Section */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8">
@@ -383,7 +465,10 @@ const HirerDashboard = () => {
               <ArrowRight className="h-4 w-4 mr-2 rotate-180" />
               Back to Creative Mode
             </Button>
-            <Dialog open={showCreateProject} onOpenChange={setShowCreateProject}>
+            <Dialog
+              open={showCreateProject}
+              onOpenChange={setShowCreateProject}
+            >
               <DialogTrigger asChild>
                 <Button className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Plus className="h-4 w-4 mr-2" />
@@ -401,10 +486,12 @@ const HirerDashboard = () => {
                       id="title"
                       placeholder="Enter project title"
                       value={newProject.title}
-                      onChange={(e) => setNewProject({ ...newProject, title: e.target.value })}
+                      onChange={(e) =>
+                        setNewProject({ ...newProject, title: e.target.value })
+                      }
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="description">Description *</Label>
                     <Textarea
@@ -412,7 +499,12 @@ const HirerDashboard = () => {
                       placeholder="Describe your project requirements"
                       rows={4}
                       value={newProject.description}
-                      onChange={(e) => setNewProject({ ...newProject, description: e.target.value })}
+                      onChange={(e) =>
+                        setNewProject({
+                          ...newProject,
+                          description: e.target.value,
+                        })
+                      }
                     />
                   </div>
 
@@ -424,7 +516,12 @@ const HirerDashboard = () => {
                         type="number"
                         placeholder="5000"
                         value={newProject.budget}
-                        onChange={(e) => setNewProject({ ...newProject, budget: Number(e.target.value) })}
+                        onChange={(e) =>
+                          setNewProject({
+                            ...newProject,
+                            budget: Number(e.target.value),
+                          })
+                        }
                       />
                     </div>
                     <div className="space-y-2">
@@ -433,14 +530,24 @@ const HirerDashboard = () => {
                         id="deadline"
                         type="date"
                         value={newProject.deadline}
-                        onChange={(e) => setNewProject({ ...newProject, deadline: e.target.value })}
+                        onChange={(e) =>
+                          setNewProject({
+                            ...newProject,
+                            deadline: e.target.value,
+                          })
+                        }
                       />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label>Category</Label>
-                    <Select value={newProject.category} onValueChange={(value) => setNewProject({ ...newProject, category: value })}>
+                    <Select
+                      value={newProject.category}
+                      onValueChange={(value) =>
+                        setNewProject({ ...newProject, category: value })
+                      }
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -460,13 +567,24 @@ const HirerDashboard = () => {
                       {skills.map((skill) => (
                         <Badge
                           key={skill}
-                          variant={newProject.skills_required.includes(skill) ? "default" : "outline"}
+                          variant={
+                            newProject.skills_required.includes(skill)
+                              ? "default"
+                              : "outline"
+                          }
                           className="cursor-pointer"
                           onClick={() => {
-                            const skills = newProject.skills_required.includes(skill)
-                              ? newProject.skills_required.filter(s => s !== skill)
+                            const skills = newProject.skills_required.includes(
+                              skill
+                            )
+                              ? newProject.skills_required.filter(
+                                  (s) => s !== skill
+                                )
                               : [...newProject.skills_required, skill];
-                            setNewProject({ ...newProject, skills_required: skills });
+                            setNewProject({
+                              ...newProject,
+                              skills_required: skills,
+                            });
                           }}
                         >
                           {skill}
@@ -476,7 +594,10 @@ const HirerDashboard = () => {
                   </div>
 
                   <div className="flex justify-end gap-3">
-                    <Button variant="outline" onClick={() => setShowCreateProject(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowCreateProject(false)}
+                    >
                       Cancel
                     </Button>
                     <Button onClick={handleCreateProject}>
@@ -495,8 +616,12 @@ const HirerDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Projects</p>
-                  <p className="text-2xl font-bold text-gray-900">{mockStats.totalProjects}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Projects
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {mockStats.totalProjects}
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Briefcase className="h-6 w-6 text-blue-600" />
@@ -509,8 +634,12 @@ const HirerDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Active Projects</p>
-                  <p className="text-2xl font-bold text-gray-900">{mockStats.activeProjects}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Active Projects
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {mockStats.activeProjects}
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
                   <TrendingUp className="h-6 w-6 text-green-600" />
@@ -523,8 +652,12 @@ const HirerDashboard = () => {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Total Budget</p>
-                  <p className="text-2xl font-bold text-gray-900">${mockStats.totalBudget.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    Total Budget
+                  </p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${mockStats.totalBudget.toLocaleString()}
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
                   <DollarSign className="h-6 w-6 text-purple-600" />
@@ -538,7 +671,9 @@ const HirerDashboard = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Proposals</p>
-                  <p className="text-2xl font-bold text-gray-900">{mockStats.proposalsReceived}</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {mockStats.proposalsReceived}
+                  </p>
                 </div>
                 <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Users className="h-6 w-6 text-orange-600" />
@@ -568,18 +703,47 @@ const HirerDashboard = () => {
                 <CardContent>
                   <div className="space-y-4">
                     {[
-                      { type: "proposal", message: "New proposal received for 'Modern Website Redesign'", time: "2 hours ago", icon: MessageCircle },
-                      { type: "project", message: "Project 'Brand Identity Package' completed", time: "1 day ago", icon: CheckCircle },
-                      { type: "message", message: "Message from Sarah Johnson", time: "2 days ago", icon: Mail },
-                      { type: "proposal", message: "Proposal submitted for 'Mobile App UI Design'", time: "3 days ago", icon: Users },
+                      {
+                        type: "proposal",
+                        message:
+                          "New proposal received for 'Modern Website Redesign'",
+                        time: "2 hours ago",
+                        icon: MessageCircle,
+                      },
+                      {
+                        type: "project",
+                        message: "Project 'Brand Identity Package' completed",
+                        time: "1 day ago",
+                        icon: CheckCircle,
+                      },
+                      {
+                        type: "message",
+                        message: "Message from Sarah Johnson",
+                        time: "2 days ago",
+                        icon: Mail,
+                      },
+                      {
+                        type: "proposal",
+                        message:
+                          "Proposal submitted for 'Mobile App UI Design'",
+                        time: "3 days ago",
+                        icon: Users,
+                      },
                     ].map((activity, index) => (
-                      <div key={index} className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
+                      <div
+                        key={index}
+                        className="flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                      >
                         <div className="h-8 w-8 bg-blue-100 rounded-full flex items-center justify-center">
                           <activity.icon className="h-4 w-4 text-blue-600" />
                         </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-900">{activity.message}</p>
-                          <p className="text-xs text-gray-500">{activity.time}</p>
+                          <p className="text-sm font-medium text-gray-900">
+                            {activity.message}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {activity.time}
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -646,11 +810,16 @@ const HirerDashboard = () => {
             {/* Projects Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {filteredProjects.map((project) => (
-                <Card key={project.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={project.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{project.title}</CardTitle>
+                        <CardTitle className="text-lg mb-2">
+                          {project.title}
+                        </CardTitle>
                         <div className="flex items-center gap-2 mb-2">
                           <Badge className={getStatusColor(project.status)}>
                             <span className="flex items-center gap-1">
@@ -667,13 +836,15 @@ const HirerDashboard = () => {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600 mb-4 line-clamp-3">{project.description}</p>
-                    
+                    <p className="text-gray-600 mb-4 line-clamp-3">
+                      {project.description}
+                    </p>
+
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       <div className="flex items-center gap-4">
                         <span className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          ${project.budget.toLocaleString()}
+                          <DollarSign className="h-4 w-4" />$
+                          {project.budget.toLocaleString()}
                         </span>
                         <span className="flex items-center gap-1">
                           <Users className="h-4 w-4" />
@@ -688,7 +859,11 @@ const HirerDashboard = () => {
 
                     <div className="flex flex-wrap gap-1 mb-4">
                       {project.skills_required.slice(0, 3).map((skill) => (
-                        <Badge key={skill} variant="secondary" className="text-xs">
+                        <Badge
+                          key={skill}
+                          variant="secondary"
+                          className="text-xs"
+                        >
                           {skill}
                         </Badge>
                       ))}
@@ -719,13 +894,20 @@ const HirerDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Proposals</CardTitle>
-                <p className="text-sm text-gray-600">Review and manage project proposals</p>
+                <p className="text-sm text-gray-600">
+                  Review and manage project proposals
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No proposals yet</h3>
-                  <p className="text-gray-600 mb-4">Proposals will appear here once freelancers start applying to your projects.</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No proposals yet
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Proposals will appear here once freelancers start applying
+                    to your projects.
+                  </p>
                   <Button onClick={() => setActiveTab("projects")}>
                     View Projects
                   </Button>
@@ -738,13 +920,19 @@ const HirerDashboard = () => {
             <Card>
               <CardHeader>
                 <CardTitle>Messages</CardTitle>
-                <p className="text-sm text-gray-600">Communicate with freelancers</p>
+                <p className="text-sm text-gray-600">
+                  Communicate with freelancers
+                </p>
               </CardHeader>
               <CardContent>
                 <div className="text-center py-12">
                   <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">No messages yet</h3>
-                  <p className="text-gray-600 mb-4">Start conversations with freelancers about your projects.</p>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    No messages yet
+                  </h3>
+                  <p className="text-gray-600 mb-4">
+                    Start conversations with freelancers about your projects.
+                  </p>
                   <Button onClick={() => setActiveTab("projects")}>
                     View Projects
                   </Button>
@@ -764,16 +952,32 @@ const HirerDashboard = () => {
                     <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span>Completed Projects</span>
-                        <span>{mockStats.completedProjects}/{mockStats.totalProjects}</span>
+                        <span>
+                          {mockStats.completedProjects}/
+                          {mockStats.totalProjects}
+                        </span>
                       </div>
-                      <Progress value={(mockStats.completedProjects / mockStats.totalProjects) * 100} />
+                      <Progress
+                        value={
+                          (mockStats.completedProjects /
+                            mockStats.totalProjects) *
+                          100
+                        }
+                      />
                     </div>
                     <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span>Active Projects</span>
-                        <span>{mockStats.activeProjects}/{mockStats.totalProjects}</span>
+                        <span>
+                          {mockStats.activeProjects}/{mockStats.totalProjects}
+                        </span>
                       </div>
-                      <Progress value={(mockStats.activeProjects / mockStats.totalProjects) * 100} />
+                      <Progress
+                        value={
+                          (mockStats.activeProjects / mockStats.totalProjects) *
+                          100
+                        }
+                      />
                     </div>
                   </div>
                 </CardContent>
@@ -786,16 +990,28 @@ const HirerDashboard = () => {
                 <CardContent>
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Total Budget</span>
-                      <span className="font-semibold">${mockStats.totalBudget.toLocaleString()}</span>
+                      <span className="text-sm text-gray-600">
+                        Total Budget
+                      </span>
+                      <span className="font-semibold">
+                        ${mockStats.totalBudget.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Average Project Value</span>
-                      <span className="font-semibold">${mockStats.avgProjectValue.toLocaleString()}</span>
+                      <span className="text-sm text-gray-600">
+                        Average Project Value
+                      </span>
+                      <span className="font-semibold">
+                        ${mockStats.avgProjectValue.toLocaleString()}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Proposals Received</span>
-                      <span className="font-semibold">{mockStats.proposalsReceived}</span>
+                      <span className="text-sm text-gray-600">
+                        Proposals Received
+                      </span>
+                      <span className="font-semibold">
+                        {mockStats.proposalsReceived}
+                      </span>
                     </div>
                   </div>
                 </CardContent>

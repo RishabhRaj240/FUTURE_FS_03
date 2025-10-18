@@ -78,9 +78,12 @@ export const Header = () => {
               >
                 My Freelance Work
               </Link>
-              <button className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
-                Hire Freelancers <ChevronDown className="h-4 w-4" />
-              </button>
+              <Link
+                to="/hire-freelancers"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Hire Freelancers
+              </Link>
             </nav>
           </div>
 

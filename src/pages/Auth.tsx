@@ -115,21 +115,25 @@ export default function Auth() {
         });
         navigate("/");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Auth error:", error);
 
       // Provide more specific error messages
-      let errorMessage = error.message;
-      if (error.message.includes("Database error")) {
-        errorMessage =
-          "There was an issue creating your profile. Please try again.";
-      } else if (error.message.includes("duplicate key")) {
-        errorMessage =
-          "Username already exists. Please choose a different username.";
-      } else if (error.message.includes("email")) {
-        errorMessage = "Invalid email address. Please check your email format.";
-      } else if (error.message.includes("password")) {
-        errorMessage = "Password must be at least 6 characters long.";
+      let errorMessage = "An error occurred";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        if (error.message.includes("Database error")) {
+          errorMessage =
+            "There was an issue creating your profile. Please try again.";
+        } else if (error.message.includes("duplicate key")) {
+          errorMessage =
+            "Username already exists. Please choose a different username.";
+        } else if (error.message.includes("email")) {
+          errorMessage =
+            "Invalid email address. Please check your email format.";
+        } else if (error.message.includes("password")) {
+          errorMessage = "Password must be at least 6 characters long.";
+        }
       }
 
       toast({
