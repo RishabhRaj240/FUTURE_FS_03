@@ -212,7 +212,7 @@ export const EnhancedSearch = () => {
           <Input
             ref={searchInputRef}
             type="search"
-            placeholder="Search Creative Hub..."
+            placeholder="Search Nexus..."
             className="pl-10 pr-20 h-10 rounded-full"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

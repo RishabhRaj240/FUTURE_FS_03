@@ -85,7 +85,7 @@ export const ProfileHoverCard = ({
 
     // Start fade out transition
     setIsVisible(false);
-    
+
     // Hide the card after transition completes
     leaveTimeoutRef.current = setTimeout(() => {
       setShowCard(false);
@@ -150,11 +150,11 @@ export const ProfileHoverCard = ({
       {children}
 
       {showCard && (
-        <Card 
+        <Card
           className={`absolute top-full right-0 mt-3 w-80 z-50 bg-white border border-gray-200 shadow-lg rounded-lg max-h-96 overflow-y-auto transition-all duration-500 ease-in-out ${
-            isVisible 
-              ? 'opacity-100 translate-y-0 scale-100' 
-              : 'opacity-0 -translate-y-2 scale-95'
+            isVisible
+              ? "opacity-100 translate-y-0 scale-100"
+              : "opacity-0 -translate-y-2 scale-95"
           }`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
@@ -163,7 +163,7 @@ export const ProfileHoverCard = ({
             {/* Profile Section */}
             <div className="p-6 text-center border-b border-gray-100">
               <div className="flex justify-center mb-4">
-                <Avatar 
+                <Avatar
                   className="h-16 w-16 border-2 border-gray-200 cursor-pointer hover:ring-4 hover:ring-blue-200 transition-all duration-200"
                   onClick={() => navigate(`/${profile.username}`)}
                 >
@@ -175,36 +175,38 @@ export const ProfileHoverCard = ({
                 </Avatar>
               </div>
 
-              <h3 
+              <h3
                 className="text-lg font-semibold text-gray-900 mb-1 cursor-pointer hover:text-blue-600 transition-colors duration-200"
                 onClick={() => navigate(`/${profile.username}`)}
               >
                 {profile.full_name || profile.username}
               </h3>
 
-              <p 
+              <p
                 className="text-sm text-gray-500 mb-4 cursor-pointer hover:text-blue-600 transition-colors duration-200"
                 onClick={() => navigate(`/${profile.username}`)}
               >
                 {profile.username}
               </p>
-
             </div>
 
             {/* Account Status Section */}
             <div className="p-4 border-b border-gray-100">
               <div className="text-xs text-gray-500 mb-3">
                 {(() => {
-                  const savedSettings = localStorage.getItem('userAvailabilitySettings');
+                  const savedSettings = localStorage.getItem(
+                    "userAvailabilitySettings"
+                  );
                   let statusText = "Available for Work";
                   let statusColor = "text-green-600";
-                  
+
                   if (savedSettings) {
                     try {
                       const parsedSettings = JSON.parse(savedSettings);
                       const isAvailable = parsedSettings.isAvailable;
-                      const status = parsedSettings.availabilityStatus || "available";
-                      
+                      const status =
+                        parsedSettings.availabilityStatus || "available";
+
                       if (!isAvailable) {
                         statusText = "Not Available";
                         statusColor = "text-gray-500";
@@ -216,10 +218,13 @@ export const ProfileHoverCard = ({
                         statusColor = "text-orange-600";
                       }
                     } catch (error) {
-                      console.error("Error parsing availability settings:", error);
+                      console.error(
+                        "Error parsing availability settings:",
+                        error
+                      );
                     }
                   }
-                  
+
                   return (
                     <div className={`${statusColor} font-medium`}>
                       Status: {statusText}
@@ -229,7 +234,7 @@ export const ProfileHoverCard = ({
               </div>
 
               <div className="space-y-3">
-                <div 
+                <div
                   className="flex items-center justify-between cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
                   onClick={() => handleMenuClick("/hirer-dashboard")}
                 >
@@ -242,7 +247,7 @@ export const ProfileHoverCard = ({
                   <ArrowRight className="h-4 w-4 text-gray-400" />
                 </div>
 
-                <div 
+                <div
                   className="cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
                   onClick={() => handleMenuClick("/edit-availability")}
                 >
@@ -259,23 +264,25 @@ export const ProfileHoverCard = ({
             {/* Navigation Links Section */}
             <div className="p-2">
               <div className="space-y-1">
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
                   onClick={() => handleMenuClick(`/${profile.username}`)}
                 >
                   <Settings className="h-4 w-4 text-gray-600" />
-                  CreativeHub Profile
+                  Nexus Profile
                 </div>
 
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
-                  onClick={() => window.open("https://portfolio.adobe.com", "_blank")}
+                  onClick={() =>
+                    window.open("https://portfolio.adobe.com", "_blank")
+                  }
                 >
                   <Briefcase className="h-4 w-4 text-gray-600" />
                   Adobe Portfolio
                 </div>
 
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
                   onClick={() => handleMenuClick("/analytics")}
                 >
@@ -283,7 +290,7 @@ export const ProfileHoverCard = ({
                   Stats & Insights
                 </div>
 
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
                   onClick={() => handleMenuClick("/freelance")}
                 >
@@ -291,7 +298,7 @@ export const ProfileHoverCard = ({
                   Manage Freelance Projects
                 </div>
 
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
                   onClick={() => handleMenuClick("/purchases")}
                 >
@@ -299,7 +306,7 @@ export const ProfileHoverCard = ({
                   Purchases
                 </div>
 
-                <div 
+                <div
                   className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 rounded-md cursor-pointer transition-colors"
                   onClick={() => handleMenuClick("/settings")}
                 >

@@ -135,8 +135,12 @@ const ProjectDetail = () => {
   }, [project, toast]);
 
   const loadProject = useCallback(async () => {
-    if (!id) return;
+    if (!id) {
+      console.log("No project ID provided");
+      return;
+    }
 
+    console.log("Loading project with ID:", id);
     setLoading(true);
     try {
       const { data: projectData, error: projectError } = await supabase
@@ -153,7 +157,23 @@ const ProjectDetail = () => {
 
       if (projectError) {
         console.error("Error loading project:", projectError);
-        navigate("/404");
+        toast({
+          title: "Error",
+          description: "Failed to load project details",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+
+      if (!projectData) {
+        console.error("Project not found");
+        toast({
+          title: "Project not found",
+          description: "The project you're looking for doesn't exist",
+          variant: "destructive",
+        });
+        navigate("/");
         return;
       }
 
@@ -186,7 +206,7 @@ const ProjectDetail = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, navigate, loadComments]);
+  }, [id, navigate, loadComments, toast]);
 
   const handleLike = async () => {
     const {

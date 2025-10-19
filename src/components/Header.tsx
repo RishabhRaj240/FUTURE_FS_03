@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ProfileHoverCard } from "@/components/ProfileHoverCard";
 import { EnhancedSearch } from "@/components/EnhancedSearch";
-import { Bell, Upload, ChevronDown } from "lucide-react";
+import { NexusLogo } from "@/components/NexusLogo";
+import { NotificationSystem } from "@/components/NotificationSystem";
+import { Upload, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
@@ -57,10 +59,14 @@ export const Header = () => {
           <div className="flex items-center gap-8">
             <Link
               to="/"
-              className="text-[22px] font-extrabold tracking-tight text-foreground hover:text-primary transition-all duration-200 cursor-pointer select-none hover:scale-105 active:scale-95"
+              className="transition-all duration-200 cursor-pointer select-none hover:scale-105 active:scale-95"
               title="Go to Home"
             >
-              CreativeHub
+              <NexusLogo
+                size="sm"
+                variant="header"
+                className="text-foreground hover:text-primary"
+              />
             </Link>
             <nav className="hidden lg:flex items-center gap-6">
               <Link to="/" className="text-sm font-semibold text-foreground">
@@ -97,9 +103,7 @@ export const Header = () => {
                   <Upload className="h-4 w-4" />
                   Share Your Work
                 </Button>
-                <Button variant="ghost" size="icon">
-                  <Bell className="h-5 w-5" />
-                </Button>
+                <NotificationSystem />
                 <ProfileHoverCard userId={user.id}>
                   <Link
                     to={profile?.username ? `/${profile.username}` : "/profile"}
@@ -136,11 +140,11 @@ export const Header = () => {
         <div className="flex items-center gap-3 pb-3">
           <EnhancedSearch />
           <div className="hidden md:flex items-center gap-2 rounded-full border px-1 py-1 bg-white">
-            <Button 
+            <Button
               variant={location.pathname === "/" ? "default" : "ghost"}
               className={`rounded-full px-4 h-8 ${
-                location.pathname === "/" 
-                  ? "bg-primary text-primary-foreground" 
+                location.pathname === "/"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => navigate("/")}
@@ -150,8 +154,8 @@ export const Header = () => {
             <Button
               variant={location.pathname === "/assets" ? "default" : "ghost"}
               className={`rounded-full px-4 h-8 ${
-                location.pathname === "/assets" 
-                  ? "bg-primary text-primary-foreground" 
+                location.pathname === "/assets"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground"
               }`}
               onClick={() => navigate("/assets")}

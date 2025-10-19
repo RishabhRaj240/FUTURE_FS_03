@@ -1,4 +1,4 @@
--- Complete Database Setup for Creative Hub
+-- Complete Database Setup for Nexus
 -- Run this in your Supabase SQL Editor to set up the entire database
 
 -- 1. Create profiles table (if not exists)

@@ -14,12 +14,22 @@ interface ProjectGridProps {
   isBestSection?: boolean;
 }
 
-export const ProjectGrid = ({ projects, onProjectUpdate, onSaveToggle, isBestSection = false }: ProjectGridProps) => {
+export const ProjectGrid = ({
+  projects,
+  onProjectUpdate,
+  onSaveToggle,
+  isBestSection = false,
+}: ProjectGridProps) => {
+  console.log("ProjectGrid rendering with projects:", projects.length);
+  console.log("Projects data:", projects);
+
   if (projects.length === 0) {
     return (
       <div className="text-center py-20">
         <h3 className="text-2xl font-semibold mb-2">No projects found</h3>
-        <p className="text-muted-foreground">Be the first to share your creative work!</p>
+        <p className="text-muted-foreground">
+          Be the first to share your creative work!
+        </p>
       </div>
     );
   }
@@ -27,8 +37,8 @@ export const ProjectGrid = ({ projects, onProjectUpdate, onSaveToggle, isBestSec
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
       {projects.map((project, index) => (
-        <ProjectCard 
-          key={project.id} 
+        <ProjectCard
+          key={project.id}
           project={project}
           onLikeToggle={onProjectUpdate}
           onSaveToggle={onSaveToggle}

@@ -61,7 +61,7 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
   const featuredTabs = [
     { id: "all", label: "All", icon: Grid3X3 },
     { id: "following", label: "Following", icon: Users },
-    { id: "best", label: "Best of Creative Hub", icon: Crown }
+    { id: "best", label: "Best of Nexus", icon: Crown }
   ];
 
   const getCategoryIcon = (categoryName: string) => {

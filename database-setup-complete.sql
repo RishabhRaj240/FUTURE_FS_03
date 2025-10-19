@@ -1,4 +1,4 @@
--- Complete database setup for Creative Hub
+-- Complete database setup for Nexus
 -- Run this in Supabase SQL Editor
 
 -- 1. Create saves table

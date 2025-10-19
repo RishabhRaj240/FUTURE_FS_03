@@ -436,8 +436,7 @@ const HireFreelancers = () => {
                   {/* Stats */}
                   <div className="mb-4">
                     <p className="text-sm text-gray-600">
-                      {freelancer.projectCount} Projects completed on
-                      CreativeHub
+                      {freelancer.projectCount} Projects completed on Nexus
                     </p>
                     <Button
                       variant="ghost"
@@ -597,7 +596,7 @@ const HireFreelancers = () => {
                     <div className="flex items-center space-x-2">
                       <Mail className="h-4 w-4 text-gray-400" />
                       <span className="text-gray-600">
-                        Send inquiry through CreativeHub
+                        Send inquiry through Nexus
                       </span>
                     </div>
                   </div>

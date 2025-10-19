@@ -1,4 +1,4 @@
--- Complete database schema for Creative Hub application
+-- Complete database schema for Nexus application
 -- Run this in the Supabase SQL Editor
 
 -- Create profiles table

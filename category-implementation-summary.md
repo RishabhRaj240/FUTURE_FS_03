@@ -20,7 +20,7 @@
 
 - **Removed hardcoded categories** that didn't match database
 - **Added dynamic category loading** from database
-- **Simplified featured tabs** to just: All, Following, Best of Creative Hub
+- **Simplified featured tabs** to just: All, Following, Best of Nexus
 - **Proper category selection** with visual feedback
 - **Category icons** based on category name matching
 

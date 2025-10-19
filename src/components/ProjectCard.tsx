@@ -30,6 +30,8 @@ export const ProjectCard = ({
   isBestSection = false,
   rank,
 }: ProjectCardProps) => {
+  console.log("ProjectCard rendering for project:", project.id, project.title);
+
   const [isLiking, setIsLiking] = useState(false);
   const [localLiked, setLocalLiked] = useState(project.isLiked || false);
   const [likesCount, setLikesCount] = useState(project.likes_count);
@@ -155,8 +157,25 @@ export const ProjectCard = ({
     (isBestSection && rank !== undefined && rank <= 3) || likesCount >= 10;
   const isHighLiked = likesCount >= 5;
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only navigate if the click is not on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest('[role="button"]')) {
+      e.preventDefault();
+      return;
+    }
+
+    // Add a small delay to ensure the click is processed
+    console.log("Navigating to project:", project.id);
+  };
+
   return (
-    <Link to={`/project/${project.id}`} className="group block">
+    <Link
+      to={`/project/${project.id}`}
+      className="group block cursor-pointer"
+      onClick={handleCardClick}
+      title={`View ${project.title}`}
+    >
       <div className={`space-y-2 ${isTopPost ? "relative" : ""}`}>
         {isTopPost && rank && (
           <div className="absolute -top-2 -left-2 z-20 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full w-8 h-8 flex items-center justify-center shadow-lg">

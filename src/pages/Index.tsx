@@ -3,6 +3,8 @@ import { useSearchParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProjectGrid } from "@/components/ProjectGrid";
+import { TestProjects } from "@/components/TestProjects";
+import { NexusLogo } from "@/components/NexusLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
 
@@ -110,6 +112,8 @@ const Index = () => {
     let results = (projectsData || []) as Project[];
 
     console.log("Raw projects from database:", results.length, "projects");
+    console.log("Projects error:", projectsError);
+    console.log("Projects data:", projectsData);
     console.log(
       "Project URLs:",
       results.map((p) => ({
@@ -231,6 +235,22 @@ const Index = () => {
       />
 
       <main className="container px-4 py-8">
+        {/* Hero Section - Show when no search and on main page */}
+        {!searchParams.get("search") && activeSection === "all" && (
+          <div className="mb-12 text-center">
+            <div className="flex justify-center mb-6">
+              <NexusLogo size="xl" variant="hero" className="text-white" />
+            </div>
+            <h2 className="text-2xl font-semibold text-muted-foreground mb-4">
+              Discover Creative Excellence
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Connect with talented creators, showcase your work, and find
+              inspiration in our vibrant community.
+            </p>
+          </div>
+        )}
+
         {/* Search Results Header */}
         {searchParams.get("search") && (
           <div className="mb-6">
@@ -247,7 +267,7 @@ const Index = () => {
         {activeSection === "best" && (
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-yellow-500 to-orange-600 bg-clip-text text-transparent mb-2">
-              Best of Creative Hub
+              Best of Nexus
             </h1>
             <p className="text-muted-foreground">
               Discover the most loved creative works from our community
@@ -258,6 +278,14 @@ const Index = () => {
         {loading ? (
           <div className="text-center py-20">
             <p className="text-muted-foreground">Loading projects...</p>
+          </div>
+        ) : projects.length === 0 ? (
+          <div className="text-center py-20">
+            <h3 className="text-2xl font-semibold mb-2">No projects found</h3>
+            <p className="text-muted-foreground mb-4">
+              Be the first to share your creative work!
+            </p>
+            <TestProjects />
           </div>
         ) : (
           <ProjectGrid
