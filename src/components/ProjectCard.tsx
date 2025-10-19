@@ -158,22 +158,40 @@ export const ProjectCard = ({
   const isHighLiked = likesCount >= 5;
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Only navigate if the click is not on interactive elements
+    // Only prevent navigation if clicking on interactive elements
     const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest('[role="button"]')) {
+    const isInteractiveElement =
+      target.closest("button") ||
+      target.closest('[role="button"]') ||
+      target.closest("svg") ||
+      target.closest(".hover\\:bg-white");
+
+    if (isInteractiveElement) {
       e.preventDefault();
+      e.stopPropagation();
       return;
     }
 
-    // Add a small delay to ensure the click is processed
     console.log("Navigating to project:", project.id);
+    // Let the Link handle the navigation naturally
   };
 
   return (
-    <Link
-      to={`/project/${project.id}`}
+    <div
       className="group block cursor-pointer"
-      onClick={handleCardClick}
+      onClick={(e) => {
+        const target = e.target as HTMLElement;
+        const isInteractiveElement =
+          target.closest("button") ||
+          target.closest('[role="button"]') ||
+          target.closest("svg") ||
+          target.closest(".hover\\:bg-white");
+
+        if (!isInteractiveElement) {
+          console.log("Navigating to project:", project.id);
+          window.location.href = `/project/${project.id}`;
+        }
+      }}
       title={`View ${project.title}`}
     >
       <div className={`space-y-2 ${isTopPost ? "relative" : ""}`}>
@@ -313,6 +331,6 @@ export const ProjectCard = ({
           )}
         </div>
       </div>
-    </Link>
+    </div>
   );
 };

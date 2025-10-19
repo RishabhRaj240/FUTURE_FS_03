@@ -70,6 +70,8 @@ const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  console.log("ProjectDetail component loaded with ID:", id);
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [isLiking, setIsLiking] = useState(false);
@@ -550,6 +552,174 @@ const ProjectDetail = () => {
 
   const isProjectOwner =
     currentUser && project && currentUser.id === project.user_id;
+
+  // Initialize user and load project data
+  useEffect(() => {
+    getCurrentUser();
+  }, []);
+
+  // Load project when ID changes
+  useEffect(() => {
+    if (!id) {
+      console.log("No project ID provided");
+      return;
+    }
+
+    console.log("Loading project with ID:", id);
+    setLoading(true);
+
+    const loadProjectData = async () => {
+      try {
+        const { data: projectData, error: projectError } = await supabase
+          .from("projects")
+          .select(
+            `
+            *,
+            profiles(*),
+            categories(*)
+          `
+          )
+          .eq("id", id)
+          .single();
+
+        if (projectError) {
+          console.error("Error loading project:", projectError);
+          toast({
+            title: "Error",
+            description: "Failed to load project details",
+            variant: "destructive",
+          });
+          navigate("/");
+          return;
+        }
+
+        if (!projectData) {
+          console.error("Project not found");
+          toast({
+            title: "Project not found",
+            description: "The project you're looking for doesn't exist",
+            variant: "destructive",
+          });
+          navigate("/");
+          return;
+        }
+
+        setProject(projectData);
+        setLikesCount(projectData.likes_count);
+        setSavesCount(projectData.saves_count || 0);
+        setCommentsCount(projectData.comments_count || 0);
+        setFollowersCount(projectData.profiles?.followers_count || 0);
+
+        // Check if current user has liked this project
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (user) {
+          const { data: likeData } = await supabase
+            .from("likes")
+            .select("id")
+            .eq("user_id", user.id)
+            .eq("project_id", id)
+            .single();
+
+          setLocalLiked(!!likeData);
+        }
+
+        // Load comments inline to avoid dependency issues
+        const loadCommentsData = async () => {
+          try {
+            const { data: commentsData, error } = await supabase
+              .from("comments")
+              .select(
+                `
+                *,
+                profiles:user_id (
+                  id,
+                  username,
+                  full_name,
+                  avatar_url
+                )
+              `
+              )
+              .eq("project_id", projectData.id)
+              .order("created_at", { ascending: false });
+
+            if (error) {
+              console.error("Error loading comments:", error);
+              return;
+            }
+
+            setComments(commentsData || []);
+          } catch (error: unknown) {
+            console.error("Error loading comments:", error);
+          }
+        };
+
+        loadCommentsData();
+      } catch (error) {
+        console.error("Error:", error);
+        navigate("/404");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProjectData();
+  }, [id, navigate, toast]);
+
+  // Check if project is saved when user or project changes
+  useEffect(() => {
+    if (!currentUser || !project) return;
+
+    const checkSaved = async () => {
+      try {
+        const { data: saveData, error } = await supabase
+          .from("saves")
+          .select("id")
+          .eq("user_id", currentUser.id)
+          .eq("project_id", project.id)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error checking save status:", error);
+          return;
+        }
+
+        setIsSaved(!!saveData);
+      } catch (error: unknown) {
+        console.error("Error checking save status:", error);
+      }
+    };
+
+    checkSaved();
+  }, [currentUser, project]);
+
+  // Check follow status when user or project changes
+  useEffect(() => {
+    if (!currentUser || !project) return;
+
+    const checkFollow = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("followers")
+          .select("id")
+          .eq("follower_id", currentUser.id)
+          .eq("following_id", project.user_id)
+          .single();
+
+        if (error && error.code !== "PGRST116") {
+          console.error("Error checking follow status:", error);
+          return;
+        }
+
+        setIsFollowing(!!data);
+      } catch (error) {
+        console.error("Error checking follow status:", error);
+      }
+    };
+
+    checkFollow();
+  }, [currentUser, project]);
 
   const handleDeleteImage = async () => {
     if (!project) return;
@@ -1077,6 +1247,15 @@ const ProjectDetail = () => {
                   size="sm"
                   className="w-full"
                   disabled={!currentUser}
+                  onClick={() => {
+                    // Scroll to comments section
+                    const commentsSection = document.querySelector(
+                      "[data-comments-section]"
+                    );
+                    if (commentsSection) {
+                      commentsSection.scrollIntoView({ behavior: "smooth" });
+                    }
+                  }}
                 >
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Comment ({commentsCount})
@@ -1224,7 +1403,7 @@ const ProjectDetail = () => {
             </Card>
 
             {/* Comments Section */}
-            <Card className="p-6">
+            <Card className="p-6" data-comments-section>
               <h3 className="font-semibold text-gray-900 mb-4">
                 Comments ({commentsCount})
               </h3>

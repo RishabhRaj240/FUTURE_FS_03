@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProjectGrid } from "@/components/ProjectGrid";
 import { TestProjects } from "@/components/TestProjects";
+import { NavigationTest } from "@/components/NavigationTest";
 import { NexusLogo } from "@/components/NexusLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { Database } from "@/integrations/supabase/types";
@@ -285,6 +286,7 @@ const Index = () => {
             <p className="text-muted-foreground mb-4">
               Be the first to share your creative work!
             </p>
+            <NavigationTest />
             <TestProjects />
           </div>
         ) : (
