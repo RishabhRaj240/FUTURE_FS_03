@@ -82,6 +82,30 @@ const Profile = () => {
 
       if (profileError) {
         console.error("Error loading profile:", profileError);
+        
+        // Handle specific errors
+        if (profileError.code === "PGRST116") {
+          // Profile not found
+          navigate("/404");
+          return;
+        } else if (profileError.message.includes("fetch") || profileError.message.includes("Failed to fetch")) {
+          toast({
+            title: "Connection Error",
+            description: "Unable to connect to the server. Please check your internet connection.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Failed to load profile. Please try again.",
+            variant: "destructive",
+          });
+        }
+        setLoading(false);
+        return;
+      }
+
+      if (!profileData) {
         navigate("/404");
         return;
       }
@@ -89,30 +113,40 @@ const Profile = () => {
       setProfile(profileData);
 
       // Load user's projects
-      const { data: projectsData, error: projectsError } = await supabase
-        .from("projects")
-        .select(
+      try {
+        const { data: projectsData, error: projectsError } = await supabase
+          .from("projects")
+          .select(
+            `
+            *,
+            categories(*)
           `
-          *,
-          categories(*)
-        `
-        )
-        .eq("user_id", profileData.id)
-        .order("created_at", { ascending: false });
+          )
+          .eq("user_id", profileData.id)
+          .order("created_at", { ascending: false });
 
-      if (projectsError) {
-        console.error("Error loading projects:", projectsError);
+        if (projectsError) {
+          console.error("Error loading projects:", projectsError);
+          setProjects([]);
+        } else {
+          setProjects(projectsData || []);
+        }
+      } catch (projectsErr) {
+        console.error("Error loading projects:", projectsErr);
         setProjects([]);
-      } else {
-        setProjects(projectsData || []);
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Unexpected error:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
       navigate("/404");
     } finally {
       setLoading(false);
     }
-  }, [username, navigate]);
+  }, [username, navigate, toast]);
 
   useEffect(() => {
     getCurrentUser();
@@ -229,23 +263,50 @@ const Profile = () => {
     try {
       // Get the project to find the image URL
       const project = projects.find((p) => p.id === projectId);
-      if (!project) return;
+      if (!project) {
+        toast({
+          title: "Error",
+          description: "Project not found",
+          variant: "destructive",
+        });
+        setIsDeleting(null);
+        return;
+      }
 
-      // Delete the image from storage first
+      // Delete the image from storage first (best effort)
       if (
         project.image_url &&
-        !project.image_url.includes("/placeholder.svg")
+        !project.image_url.includes("/placeholder.svg") &&
+        (project.image_url.includes("supabase.co") ||
+          project.image_url.includes("/storage/v1/object/public/"))
       ) {
-        const url = new URL(project.image_url);
-        const filePath = url.pathname.split("/").slice(3).join("/");
+        try {
+          const url = new URL(project.image_url);
+          const pathParts = url.pathname.split("/").filter(Boolean);
+          
+          // Extract file path from URL
+          const projectsIndex = pathParts.indexOf("projects");
+          let filePath = "";
+          
+          if (projectsIndex !== -1 && projectsIndex < pathParts.length - 1) {
+            filePath = pathParts.slice(projectsIndex + 1).join("/");
+          } else if (pathParts.length >= 5 && pathParts[0] === "storage") {
+            filePath = pathParts.slice(4).join("/");
+          }
 
-        const { error: storageError } = await supabase.storage
-          .from("projects")
-          .remove([filePath]);
+          if (filePath) {
+            const { error: storageError } = await supabase.storage
+              .from("projects")
+              .remove([filePath]);
 
-        if (storageError) {
-          console.error("Storage delete error:", storageError);
-          // Continue with project deletion even if storage deletion fails
+            if (storageError) {
+              console.warn("Storage delete error (non-fatal):", storageError);
+              // Continue with project deletion even if storage deletion fails
+            }
+          }
+        } catch (urlError) {
+          console.warn("Error parsing image URL (non-fatal):", urlError);
+          // Continue with project deletion
         }
       }
 
@@ -256,6 +317,14 @@ const Profile = () => {
         .eq("id", projectId);
 
       if (projectError) {
+        console.error("Project deletion error:", projectError);
+        
+        if (projectError.code === "42501") {
+          throw new Error("You do not have permission to delete this project.");
+        } else if (projectError.message.includes("fetch")) {
+          throw new Error("Network error. Please check your connection and try again.");
+        }
+        
         throw projectError;
       }
 
@@ -268,9 +337,15 @@ const Profile = () => {
       });
     } catch (error) {
       console.error("Error deleting project:", error);
+      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to delete project. Please try again.";
+      
       toast({
         title: "Error",
-        description: "Failed to delete project.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

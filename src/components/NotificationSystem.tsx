@@ -114,6 +114,7 @@ export const NotificationSystem: React.FC = () => {
 
               if (fetchError) {
                 console.error("Error fetching project data:", fetchError);
+                // Don't show error to user for notification failures
                 return;
               }
 

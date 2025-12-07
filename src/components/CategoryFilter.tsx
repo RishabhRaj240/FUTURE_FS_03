@@ -78,17 +78,25 @@ export const CategoryFilter = ({ selectedCategory, onCategoryChange, onSectionCh
   };
 
   const loadCategories = async () => {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("name");
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name");
 
-    if (error) {
-      console.error("Error loading categories:", error);
-      return;
+      if (error) {
+        console.error("Error loading categories:", error);
+        // Set empty array to prevent UI from breaking
+        setCategories([]);
+        return;
+      }
+
+      setCategories(data || []);
+    } catch (err) {
+      console.error("Unexpected error loading categories:", err);
+      // Set empty array to prevent UI from breaking
+      setCategories([]);
     }
-
-    setCategories(data || []);
   };
 
   useEffect(() => {

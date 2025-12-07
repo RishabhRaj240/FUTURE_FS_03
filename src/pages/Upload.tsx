@@ -66,17 +66,31 @@ export default function Upload() {
   }, [checkAuth]);
 
   const loadCategories = async () => {
-    const { data, error } = await supabase
-      .from("categories")
-      .select("*")
-      .order("name");
+    try {
+      const { data, error } = await supabase
+        .from("categories")
+        .select("*")
+        .order("name");
 
-    if (error) {
-      console.error("Error loading categories:", error);
-      return;
+      if (error) {
+        console.error("Error loading categories:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load categories. Please refresh the page.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setCategories(data || []);
+    } catch (err) {
+      console.error("Unexpected error loading categories:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while loading categories.",
+        variant: "destructive",
+      });
     }
-
-    setCategories(data || []);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,13 +173,33 @@ export default function Upload() {
       return;
     }
 
+    if (!title.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a title for your project",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setUploading(true);
 
     try {
+      // Check authentication
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      
+      if (authError || !user) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to upload projects",
+          variant: "destructive",
+        });
+        navigate("/auth");
+        return;
+      }
 
       // Upload media (image or video)
       const fileExt = imageFile.name.split(".").pop();
@@ -173,42 +207,95 @@ export default function Upload() {
 
       const { error: uploadError } = await supabase.storage
         .from("projects")
-        .upload(fileName, imageFile);
+        .upload(fileName, imageFile, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error("Storage upload error:", uploadError);
+        
+        // Handle specific storage errors
+        if (uploadError.message.includes("Bucket not found")) {
+          throw new Error("Storage bucket not configured. Please contact support.");
+        } else if (uploadError.message.includes("The resource already exists")) {
+          // Retry with a different filename
+          const retryFileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+          const { error: retryError } = await supabase.storage
+            .from("projects")
+            .upload(retryFileName, imageFile);
+          
+          if (retryError) throw retryError;
+          
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("projects").getPublicUrl(retryFileName);
+          
+          await createProject(user.id, publicUrl);
+        } else {
+          throw uploadError;
+        }
+      } else {
+        // Get public URL
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("projects").getPublicUrl(fileName);
 
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("projects").getPublicUrl(fileName);
-
-      // Create project (store media URL in image_url for now)
-      const { error: projectError } = await supabase.from("projects").insert({
-        user_id: user.id,
-        title,
-        description,
-        image_url: publicUrl,
-        category_id: categoryId || null,
-      });
-
-      if (projectError) throw projectError;
-
-      toast({
-        title: "Success!",
-        description: "Your project has been uploaded",
-      });
-
-      navigate("/");
+        await createProject(user.id, publicUrl);
+      }
     } catch (error: unknown) {
+      console.error("Upload error:", error);
+      
+      let errorMessage = "An error occurred while uploading your project";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+        
+        if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message.includes("JWT") || error.message.includes("token")) {
+          errorMessage = "Session expired. Please log in again.";
+          navigate("/auth");
+        }
+      }
+      
       toast({
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "An error occurred",
+        title: "Upload Failed",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setUploading(false);
     }
+  };
+
+  const createProject = async (userId: string, imageUrl: string) => {
+    const { error: projectError } = await supabase.from("projects").insert({
+      user_id: userId,
+      title: title.trim(),
+      description: description.trim() || null,
+      image_url: imageUrl,
+      category_id: categoryId || null,
+    });
+
+    if (projectError) {
+      console.error("Project creation error:", projectError);
+      
+      if (projectError.code === "23503") {
+        throw new Error("Invalid category selected. Please choose a valid category.");
+      } else if (projectError.code === "23502") {
+        throw new Error("Missing required fields. Please fill in all required information.");
+      }
+      
+      throw projectError;
+    }
+
+    toast({
+      title: "Success!",
+      description: "Your project has been uploaded successfully",
+    });
+
+    navigate("/");
   };
 
   return (

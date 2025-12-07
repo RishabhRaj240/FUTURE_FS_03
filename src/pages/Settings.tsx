@@ -169,22 +169,31 @@ const Settings = () => {
 
       // Check if username is available (only if username changed)
       if (formData.username !== profile?.username) {
-        const { data: existingProfile } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("username", formData.username)
-          .neq("id", user.id)
-          .single();
+        try {
+          const { data: existingProfile, error: checkError } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("username", formData.username)
+            .neq("id", user.id)
+            .single();
 
-        if (existingProfile) {
-          toast({
-            title: "Username Taken",
-            description:
-              "This username is already taken. Please choose another.",
-            variant: "destructive",
-          });
-          setSaving(false);
-          return;
+          // PGRST116 means not found, which is what we want
+          if (checkError && checkError.code !== "PGRST116") {
+            console.error("Error checking username:", checkError);
+            // Continue anyway - let the update fail if username is taken
+          } else if (existingProfile) {
+            toast({
+              title: "Username Taken",
+              description:
+                "This username is already taken. Please choose another.",
+              variant: "destructive",
+            });
+            setSaving(false);
+            return;
+          }
+        } catch (checkErr) {
+          console.error("Error checking username availability:", checkErr);
+          // Continue with update - let it fail if username is taken
         }
       }
 
@@ -215,6 +224,16 @@ const Settings = () => {
 
       if (error) {
         console.error("Supabase error:", error);
+        
+        // Handle specific errors
+        if (error.code === "23505") {
+          throw new Error("Username already exists. Please choose a different username.");
+        } else if (error.code === "42501") {
+          throw new Error("You do not have permission to update this profile.");
+        } else if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+          throw new Error("Network error. Please check your connection and try again.");
+        }
+        
         throw error;
       }
 
@@ -229,11 +248,15 @@ const Settings = () => {
       await loadUserData();
     } catch (error) {
       console.error("Error updating profile:", error);
+      
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to update profile. Please try again.";
+      
       toast({
         title: "Error",
-        description: `Failed to update profile: ${
-          error.message || "Please try again."
-        }`,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -284,9 +307,24 @@ const Settings = () => {
       });
     } catch (error) {
       console.error("Error updating password:", error);
+      
+      let errorMessage = "Failed to update password. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("password")) {
+          errorMessage = "Password must be at least 6 characters long.";
+        } else if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+          errorMessage = "Network error. Please check your connection and try again.";
+        } else if (error.message.includes("JWT") || error.message.includes("token")) {
+          errorMessage = "Session expired. Please log in again.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to update password. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

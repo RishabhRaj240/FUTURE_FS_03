@@ -128,19 +128,33 @@ const Analytics = () => {
 
   const loadAnalyticsData = useCallback(async () => {
     try {
+      setLoading(true);
+      
       // Load user's analytics data from Supabase
       const {
         data: { user },
+        error: authError,
       } = await supabase.auth.getUser();
-      if (!user) return;
+      
+      if (authError || !user) {
+        console.error("Auth error:", authError);
+        setLoading(false);
+        return;
+      }
 
       // Get user's projects with stats
-      const { data: projects } = await supabase
+      const { data: projects, error: projectsError } = await supabase
         .from("projects")
         .select(
           "id, title, views_count, likes_count, created_at, category_id, categories(name)"
         )
         .eq("user_id", user.id);
+
+      if (projectsError) {
+        console.error("Error loading projects:", projectsError);
+        setLoading(false);
+        return;
+      }
 
       if (projects) {
         const totalViews = projects.reduce(

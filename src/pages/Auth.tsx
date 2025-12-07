@@ -39,6 +39,16 @@ export default function Auth() {
     setLoading(true);
 
     try {
+      // Check if Supabase is properly configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error(
+          "Backend not configured. Please check your environment variables."
+        );
+      }
+
       if (isSignUp) {
         // Validate required fields
         if (!email || !password) {
@@ -52,7 +62,8 @@ export default function Auth() {
         if (username && username.length < 3) {
           throw new Error("Username must be at least 3 characters long");
         }
-        const { error } = await supabase.auth.signUp({
+
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -64,20 +75,25 @@ export default function Auth() {
           },
         });
 
-        if (error) throw error;
+        if (error) {
+          // Handle specific Supabase errors
+          if (error.message.includes("fetch")) {
+            throw new Error(
+              "Unable to connect to the server. Please check your internet connection and try again."
+            );
+          }
+          throw error;
+        }
 
         // Wait a moment for the trigger to create the profile
         await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // Check if profile was created, if not create it manually
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (user) {
+        if (signUpData.user) {
           const { data: existingProfile } = await supabase
             .from("profiles")
             .select("id")
-            .eq("id", user.id)
+            .eq("id", signUpData.user.id)
             .single();
 
           if (!existingProfile) {
@@ -85,7 +101,7 @@ export default function Auth() {
             const { error: profileError } = await supabase
               .from("profiles")
               .insert({
-                id: user.id,
+                id: signUpData.user.id,
                 username: username || email.split("@")[0],
                 full_name: fullName,
               });
@@ -107,7 +123,18 @@ export default function Auth() {
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          // Handle specific Supabase errors
+          if (error.message.includes("fetch") || error.message.includes("Failed to fetch")) {
+            throw new Error(
+              "Unable to connect to the server. Please check your internet connection and Supabase configuration."
+            );
+          }
+          if (error.message.includes("Invalid login credentials")) {
+            throw new Error("Invalid email or password. Please try again.");
+          }
+          throw error;
+        }
 
         toast({
           title: "Welcome back!",
@@ -122,7 +149,20 @@ export default function Auth() {
       let errorMessage = "An error occurred";
       if (error instanceof Error) {
         errorMessage = error.message;
-        if (error.message.includes("Database error")) {
+        
+        // Network/connection errors
+        if (
+          error.message.includes("fetch") ||
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("NetworkError") ||
+          error.message.includes("network")
+        ) {
+          errorMessage =
+            "Unable to connect to the server. Please check:\n" +
+            "1. Your internet connection\n" +
+            "2. Supabase environment variables are set correctly\n" +
+            "3. The Supabase service is running";
+        } else if (error.message.includes("Database error")) {
           errorMessage =
             "There was an issue creating your profile. Please try again.";
         } else if (error.message.includes("duplicate key")) {
@@ -133,6 +173,11 @@ export default function Auth() {
             "Invalid email address. Please check your email format.";
         } else if (error.message.includes("password")) {
           errorMessage = "Password must be at least 6 characters long.";
+        } else if (error.message.includes("Invalid login credentials")) {
+          errorMessage = "Invalid email or password. Please try again.";
+        } else if (error.message.includes("Backend not configured")) {
+          errorMessage =
+            "Backend configuration is missing. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your .env file.";
         }
       }
 

@@ -1430,35 +1430,6 @@ const EditAvailability = () => {
                   Cancel
                 </Button>
 
-                {/* Debug button - remove in production */}
-                <Button
-                  variant="outline"
-                  className="w-full text-xs"
-                  onClick={() => {
-                    const settings = localStorage.getItem(
-                      "userAvailabilitySettings"
-                    );
-                    if (settings) {
-                      console.log(
-                        "Current localStorage settings:",
-                        JSON.parse(settings)
-                      );
-                      toast({
-                        title: "Debug Info",
-                        description: `Settings saved at: ${
-                          JSON.parse(settings).savedAt || "Unknown"
-                        }`,
-                      });
-                    } else {
-                      toast({
-                        title: "Debug Info",
-                        description: "No settings found in localStorage",
-                      });
-                    }
-                  }}
-                >
-                  Debug: Check Storage
-                </Button>
               </CardContent>
             </Card>
 

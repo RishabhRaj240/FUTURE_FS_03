@@ -108,7 +108,7 @@ const ProjectDetail = () => {
         .select(
           `
           *,
-          profiles:user_id (
+          profiles (
             id,
             username,
             full_name,
@@ -135,80 +135,6 @@ const ProjectDetail = () => {
       });
     }
   }, [project, toast]);
-
-  const loadProject = useCallback(async () => {
-    if (!id) {
-      console.log("No project ID provided");
-      return;
-    }
-
-    console.log("Loading project with ID:", id);
-    setLoading(true);
-    try {
-      const { data: projectData, error: projectError } = await supabase
-        .from("projects")
-        .select(
-          `
-          *,
-          profiles(*),
-          categories(*)
-        `
-        )
-        .eq("id", id)
-        .single();
-
-      if (projectError) {
-        console.error("Error loading project:", projectError);
-        toast({
-          title: "Error",
-          description: "Failed to load project details",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
-      if (!projectData) {
-        console.error("Project not found");
-        toast({
-          title: "Project not found",
-          description: "The project you're looking for doesn't exist",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
-      setProject(projectData);
-      setLikesCount(projectData.likes_count);
-      setSavesCount(projectData.saves_count || 0);
-      setCommentsCount(projectData.comments_count || 0);
-      setFollowersCount(projectData.profiles?.followers_count || 0);
-
-      // Check if current user has liked this project
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        const { data: likeData } = await supabase
-          .from("likes")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("project_id", id)
-          .single();
-
-        setLocalLiked(!!likeData);
-      }
-
-      // Load comments
-      loadComments();
-    } catch (error) {
-      console.error("Error:", error);
-      navigate("/404");
-    } finally {
-      setLoading(false);
-    }
-  }, [id, navigate, loadComments, toast]);
 
   const handleLike = async () => {
     const {
@@ -353,29 +279,6 @@ const ProjectDetail = () => {
       setIsSaving(false);
     }
   };
-
-  const checkIfFollowing = useCallback(async () => {
-    if (!currentUser || !project) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("followers")
-        .select("id")
-        .eq("follower_id", currentUser.id)
-        .eq("following_id", project.user_id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 is "not found" error
-        console.error("Error checking follow status:", error);
-        return;
-      }
-
-      setIsFollowing(!!data);
-    } catch (error) {
-      console.error("Error checking follow status:", error);
-    }
-  }, [currentUser, project]);
 
   const handleFollow = async () => {
     if (!currentUser || !project) {
@@ -526,30 +429,6 @@ const ProjectDetail = () => {
     }
   };
 
-  const checkIfSaved = useCallback(async () => {
-    if (!currentUser || !project) return;
-
-    try {
-      const { data: saveData, error } = await supabase
-        .from("saves")
-        .select("id")
-        .eq("user_id", currentUser.id)
-        .eq("project_id", project.id)
-        .single();
-
-      if (error && error.code !== "PGRST116") {
-        // PGRST116 is "not found" error, which is expected
-        console.error("Error checking save status:", error);
-        return;
-      }
-
-      setIsSaved(!!saveData);
-    } catch (error: unknown) {
-      console.error("Error checking save status:", error);
-      // Don't show error toast for this as it's not critical
-    }
-  }, [currentUser, project]);
-
   const isProjectOwner =
     currentUser && project && currentUser.id === project.user_id;
 
@@ -624,38 +503,6 @@ const ProjectDetail = () => {
 
           setLocalLiked(!!likeData);
         }
-
-        // Load comments inline to avoid dependency issues
-        const loadCommentsData = async () => {
-          try {
-            const { data: commentsData, error } = await supabase
-              .from("comments")
-              .select(
-                `
-                *,
-                profiles:user_id (
-                  id,
-                  username,
-                  full_name,
-                  avatar_url
-                )
-              `
-              )
-              .eq("project_id", projectData.id)
-              .order("created_at", { ascending: false });
-
-            if (error) {
-              console.error("Error loading comments:", error);
-              return;
-            }
-
-            setComments(commentsData || []);
-          } catch (error: unknown) {
-            console.error("Error loading comments:", error);
-          }
-        };
-
-        loadCommentsData();
       } catch (error) {
         console.error("Error:", error);
         navigate("/404");
@@ -666,6 +513,13 @@ const ProjectDetail = () => {
 
     loadProjectData();
   }, [id, navigate, toast]);
+
+  // Load comments when project changes
+  useEffect(() => {
+    if (project) {
+      loadComments();
+    }
+  }, [project, loadComments]);
 
   // Check if project is saved when user or project changes
   useEffect(() => {
@@ -725,23 +579,59 @@ const ProjectDetail = () => {
     if (!project) return;
 
     try {
-      // Extract file path from URL
-      const url = new URL(project.image_url);
-      const filePath = url.pathname.split("/").slice(3).join("/"); // Remove '/storage/v1/object/public/projects/'
+      // Only try to delete from storage if it's a Supabase storage URL
+      if (
+        project.image_url &&
+        !project.image_url.includes("/placeholder.svg") &&
+        (project.image_url.includes("supabase.co") ||
+          project.image_url.includes("/storage/v1/object/public/"))
+      ) {
+        try {
+          // Extract file path from URL - handle different URL formats
+          const url = new URL(project.image_url);
+          let filePath = "";
 
-      // Delete from storage
-      const { error: storageError } = await supabase.storage
-        .from("projects")
-        .remove([filePath]);
+          // Try different path parsing strategies
+          const pathParts = url.pathname.split("/").filter(Boolean);
 
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
-        toast({
-          title: "Error",
-          description: "Failed to delete image from storage.",
-          variant: "destructive",
-        });
-        return;
+          // Look for 'projects' in the path and get everything after it
+          const projectsIndex = pathParts.indexOf("projects");
+          if (projectsIndex !== -1 && projectsIndex < pathParts.length - 1) {
+            filePath = pathParts.slice(projectsIndex + 1).join("/");
+          } else {
+            // Fallback: try to extract from common patterns
+            // Pattern: /storage/v1/object/public/projects/path
+            if (pathParts.length >= 5 && pathParts[0] === "storage") {
+              filePath = pathParts.slice(4).join("/");
+            } else {
+              // Last resort: use everything after the last '/storage' or 'projects'
+              const lastStorageIndex = url.pathname.lastIndexOf("/storage");
+              const lastProjectsIndex = url.pathname.lastIndexOf("/projects");
+              const startIndex = Math.max(lastStorageIndex, lastProjectsIndex);
+              if (startIndex !== -1) {
+                filePath = url.pathname
+                  .substring(startIndex + 1)
+                  .split("/")
+                  .slice(1)
+                  .join("/");
+              }
+            }
+          }
+
+          if (filePath) {
+            const { error: storageError } = await supabase.storage
+              .from("projects")
+              .remove([filePath]);
+
+            if (storageError) {
+              console.warn("Storage delete error (non-fatal):", storageError);
+              // Continue with updating the project even if storage deletion fails
+            }
+          }
+        } catch (urlError) {
+          console.warn("Error parsing image URL (non-fatal):", urlError);
+          // Continue with updating the project even if URL parsing fails
+        }
       }
 
       // Update project with placeholder image
@@ -782,21 +672,40 @@ const ProjectDetail = () => {
 
     setIsDeleting(true);
     try {
-      // Delete the image from storage first
+      // Delete the image from storage first (best effort)
       if (
         project.image_url &&
-        !project.image_url.includes("/placeholder.svg")
+        !project.image_url.includes("/placeholder.svg") &&
+        (project.image_url.includes("supabase.co") ||
+          project.image_url.includes("/storage/v1/object/public/"))
       ) {
-        const url = new URL(project.image_url);
-        const filePath = url.pathname.split("/").slice(3).join("/");
+        try {
+          const url = new URL(project.image_url);
+          const pathParts = url.pathname.split("/").filter(Boolean);
 
-        const { error: storageError } = await supabase.storage
-          .from("projects")
-          .remove([filePath]);
+          // Look for 'projects' in the path and get everything after it
+          const projectsIndex = pathParts.indexOf("projects");
+          let filePath = "";
 
-        if (storageError) {
-          console.error("Storage delete error:", storageError);
-          // Continue with project deletion even if storage deletion fails
+          if (projectsIndex !== -1 && projectsIndex < pathParts.length - 1) {
+            filePath = pathParts.slice(projectsIndex + 1).join("/");
+          } else if (pathParts.length >= 5 && pathParts[0] === "storage") {
+            filePath = pathParts.slice(4).join("/");
+          }
+
+          if (filePath) {
+            const { error: storageError } = await supabase.storage
+              .from("projects")
+              .remove([filePath]);
+
+            if (storageError) {
+              console.warn("Storage delete error (non-fatal):", storageError);
+              // Continue with project deletion even if storage deletion fails
+            }
+          }
+        } catch (urlError) {
+          console.warn("Error parsing image URL (non-fatal):", urlError);
+          // Continue with project deletion even if URL parsing fails
         }
       }
 
@@ -891,27 +800,42 @@ const ProjectDetail = () => {
       try {
         if (
           previousImageUrl &&
-          !previousImageUrl.endsWith("/placeholder.svg")
+          !previousImageUrl.endsWith("/placeholder.svg") &&
+          (previousImageUrl.includes("supabase.co") ||
+            previousImageUrl.includes("/storage/v1/object/public/"))
         ) {
           const prevUrl = new URL(previousImageUrl);
-          // Expect: /storage/v1/object/public/projects/<path>
-          const prevPath = prevUrl.pathname.split("/").slice(5).join("/");
-          // Fallback for different path structures
-          const altPrevPath = prevUrl.pathname.split("/").slice(3).join("/");
-          const candidatePaths = [prevPath, altPrevPath].filter(Boolean);
+          const pathParts = prevUrl.pathname.split("/").filter(Boolean);
 
-          for (const p of candidatePaths) {
-            if (!p) continue;
+          // Look for 'projects' in the path and get everything after it
+          const projectsIndex = pathParts.indexOf("projects");
+          let filePath = "";
+
+          if (projectsIndex !== -1 && projectsIndex < pathParts.length - 1) {
+            filePath = pathParts.slice(projectsIndex + 1).join("/");
+          } else if (pathParts.length >= 5 && pathParts[0] === "storage") {
+            filePath = pathParts.slice(4).join("/");
+          }
+
+          if (filePath) {
             const { error: removeError } = await supabase.storage
               .from("projects")
-              .remove([p]);
-            // If one removal path works, stop trying others
-            if (!removeError) break;
+              .remove([filePath]);
+
+            if (removeError) {
+              console.warn(
+                "Failed to cleanup previous image (non-fatal):",
+                removeError
+              );
+            }
           }
         }
       } catch (cleanupError) {
         // Non-fatal: log but don't interrupt user flow
-        console.warn("Failed to cleanup previous image:", cleanupError);
+        console.warn(
+          "Failed to cleanup previous image (non-fatal):",
+          cleanupError
+        );
       }
 
       toast({
@@ -1008,12 +932,29 @@ const ProjectDetail = () => {
                   muted
                   loop
                   playsInline
+                  onError={(e) => {
+                    console.error("Error loading video:", e);
+                    toast({
+                      title: "Error",
+                      description:
+                        "Failed to load video. Please try again later.",
+                      variant: "destructive",
+                    });
+                  }}
                 />
               ) : (
                 <img
-                  src={project.image_url}
+                  src={project.image_url || "/placeholder.svg"}
                   alt={project.title}
                   className="w-full h-auto object-cover"
+                  onError={(e) => {
+                    console.error("Error loading image:", e);
+                    // Fallback to placeholder if image fails to load
+                    const target = e.target as HTMLImageElement;
+                    if (target.src !== "/placeholder.svg") {
+                      target.src = "/placeholder.svg";
+                    }
+                  }}
                 />
               )}
 

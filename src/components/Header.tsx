@@ -42,13 +42,24 @@ export const Header = () => {
   }, []);
 
   const loadProfile = async (userId: string) => {
-    const { data: profileData } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", userId)
-      .single();
+    try {
+      const { data: profileData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
 
-    setProfile(profileData);
+      if (error) {
+        console.error("Error loading profile:", error);
+        setProfile(null);
+        return;
+      }
+
+      setProfile(profileData);
+    } catch (err) {
+      console.error("Unexpected error loading profile:", err);
+      setProfile(null);
+    }
   };
 
   return (
